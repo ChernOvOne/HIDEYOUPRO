@@ -1052,8 +1052,21 @@ async function runImport(session: ImportSession, dryRun: boolean) {
         const amount = amountStr ? parseFloat(amountStr.replace(',', '.').replace(/\s/g, '')) : 0
         const createdDateStr = regexFields.createdAt || getVal(row, 'createdAt')
         const paidDateStr = regexFields.paidAt || getVal(row, 'paidAt')
-        const createdDate = parseDate(createdDateStr) || undefined
-        const paidDate = parseDate(paidDateStr) || undefined
+        let createdDate = parseDate(createdDateStr) || undefined
+        let paidDate = parseDate(paidDateStr) || undefined
+
+        // Fallback: scan ALL columns for a date if none mapped
+        if (!createdDate && !paidDate) {
+          for (let c = 0; c < row.length; c++) {
+            const v = (row[c] || '').trim()
+            if (v && /^\d{2}\.\d{2}\.\d{4}/.test(v)) {
+              const d = parseDate(v)
+              if (d) { createdDate = d; break }
+            }
+          }
+        }
+        // Ensure createdDate is always set
+        if (!createdDate && paidDate) createdDate = paidDate
         const rawStatus = regexFields.status || getVal(row, 'status') || ''
         const description = regexFields.description || getVal(row, 'description') || ''
         const method = regexFields.method || getVal(row, 'method') || ''

@@ -7,14 +7,19 @@ import { randomBytes } from 'crypto'
 export async function adminPaymentRoutes(app: FastifyInstance) {
   const admin = { preHandler: [app.adminOnly] }
 
-  // GET / — list payments with filters
+  // GET / — list payments with full filters
   app.get('/', admin, async (req) => {
     const qs = z.object({
-      status:   z.string().optional(),
-      provider: z.string().optional(),
-      search:   z.string().optional(),
-      page:     z.coerce.number().int().min(1).default(1),
-      limit:    z.coerce.number().int().min(1).max(100).default(30),
+      status:    z.string().optional(),
+      provider:  z.string().optional(),
+      search:    z.string().optional(),
+      dateFrom:  z.string().optional(),
+      dateTo:    z.string().optional(),
+      amountMin: z.coerce.number().optional(),
+      amountMax: z.coerce.number().optional(),
+      sort:      z.string().optional(),        // field:dir e.g. "amount:desc"
+      page:      z.coerce.number().int().min(1).default(1),
+      limit:     z.coerce.number().int().min(1).max(100).default(30),
     }).parse(req.query)
 
     const where: any = {}
@@ -23,9 +28,32 @@ export async function adminPaymentRoutes(app: FastifyInstance) {
     if (qs.search) {
       where.OR = [
         { externalId: { contains: qs.search, mode: 'insensitive' } },
+        { description: { contains: qs.search, mode: 'insensitive' } },
         { user: { email: { contains: qs.search, mode: 'insensitive' } } },
         { user: { telegramName: { contains: qs.search, mode: 'insensitive' } } },
+        { user: { telegramId: { contains: qs.search, mode: 'insensitive' } } },
       ]
+    }
+    // Date filters
+    if (qs.dateFrom || qs.dateTo) {
+      where.createdAt = {}
+      if (qs.dateFrom) where.createdAt.gte = new Date(qs.dateFrom)
+      if (qs.dateTo)   { const d = new Date(qs.dateTo); d.setHours(23,59,59,999); where.createdAt.lte = d }
+    }
+    // Amount filters
+    if (qs.amountMin !== undefined || qs.amountMax !== undefined) {
+      where.amount = {}
+      if (qs.amountMin !== undefined) where.amount.gte = qs.amountMin
+      if (qs.amountMax !== undefined) where.amount.lte = qs.amountMax
+    }
+
+    // Sort
+    let orderBy: any = { createdAt: 'desc' }
+    if (qs.sort) {
+      const [field, dir] = qs.sort.split(':')
+      if (['createdAt','amount','paidAt'].includes(field) && ['asc','desc'].includes(dir)) {
+        orderBy = { [field]: dir }
+      }
     }
 
     const [payments, total] = await Promise.all([
@@ -35,7 +63,7 @@ export async function adminPaymentRoutes(app: FastifyInstance) {
           user:   { select: { id: true, email: true, telegramName: true, telegramId: true } },
           tariff: { select: { id: true, name: true } },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip: (qs.page - 1) * qs.limit,
         take: qs.limit,
       }),

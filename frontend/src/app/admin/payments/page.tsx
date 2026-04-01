@@ -109,8 +109,11 @@ export default function PaymentsPage() {
   const [search, setSearch]     = useState('')
   const [status, setStatus]     = useState('')
   const [provider, setProvider] = useState('')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo]     = useState('')
+  const [dateFrom, setDateFrom]     = useState('')
+  const [dateTo, setDateTo]         = useState('')
+  const [amountMin, setAmountMin]   = useState('')
+  const [amountMax, setAmountMax]   = useState('')
+  const [sort, setSort]             = useState('createdAt:desc')
   const [loading, setLoading]   = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -129,6 +132,9 @@ export default function PaymentsPage() {
       if (provider) params.set('provider', provider)
       if (dateFrom) params.set('dateFrom', dateFrom)
       if (dateTo) params.set('dateTo', dateTo)
+      if (amountMin) params.set('amountMin', amountMin)
+      if (amountMax) params.set('amountMax', amountMax)
+      if (sort && sort !== 'createdAt:desc') params.set('sort', sort)
 
       const [p, s, k] = await Promise.all([
         api(`/?${params}`),
@@ -143,7 +149,7 @@ export default function PaymentsPage() {
       toast.error('Ошибка загрузки')
     }
     setLoading(false)
-  }, [page, search, status, provider, dateFrom, dateTo])
+  }, [page, search, status, provider, dateFrom, dateTo, amountMin, amountMax, sort])
 
   useEffect(() => { load() }, [load])
 
@@ -252,21 +258,37 @@ export default function PaymentsPage() {
               </select>
             </div>
 
-            {/* Date range */}
+            {/* Date + Amount + Sort */}
             <div className="flex gap-2 mb-4 flex-wrap items-center">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              <input
-                type="date" className="input w-auto py-1.5 text-xs" value={dateFrom}
-                onChange={e => { setDateFrom(e.target.value); resetPage() }}
-              />
-              <span className="text-xs text-gray-400">--</span>
-              <input
-                type="date" className="input w-auto py-1.5 text-xs" value={dateTo}
-                onChange={e => { setDateTo(e.target.value); resetPage() }}
-              />
-              {(dateFrom || dateTo) && (
-                <button className="text-xs text-gray-400 hover:text-gray-600" onClick={() => { setDateFrom(''); setDateTo(''); resetPage() }}>
-                  Сбросить
+              <Calendar className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <input type="date" className="input w-auto py-1.5 text-xs" value={dateFrom}
+                onChange={e => { setDateFrom(e.target.value); resetPage() }} />
+              <span className="text-xs text-gray-400">—</span>
+              <input type="date" className="input w-auto py-1.5 text-xs" value={dateTo}
+                onChange={e => { setDateTo(e.target.value); resetPage() }} />
+
+              <span className="text-gray-300 mx-1">|</span>
+
+              <input type="number" className="input w-[100px] py-1.5 text-xs" value={amountMin}
+                onChange={e => { setAmountMin(e.target.value); resetPage() }} placeholder="Сумма от" />
+              <span className="text-xs text-gray-400">—</span>
+              <input type="number" className="input w-[100px] py-1.5 text-xs" value={amountMax}
+                onChange={e => { setAmountMax(e.target.value); resetPage() }} placeholder="до" />
+
+              <span className="text-gray-300 mx-1">|</span>
+
+              <select value={sort} onChange={e => { setSort(e.target.value); resetPage() }} className="input w-auto py-1.5 text-xs">
+                <option value="createdAt:desc">Новые</option>
+                <option value="createdAt:asc">Старые</option>
+                <option value="amount:desc">Сумма (макс)</option>
+                <option value="amount:asc">Сумма (мин)</option>
+              </select>
+
+              {(dateFrom || dateTo || amountMin || amountMax || sort !== 'createdAt:desc') && (
+                <button className="text-xs text-gray-400 hover:text-red-500" onClick={() => {
+                  setDateFrom(''); setDateTo(''); setAmountMin(''); setAmountMax(''); setSort('createdAt:desc'); resetPage()
+                }}>
+                  Сбросить фильтры
                 </button>
               )}
             </div>
