@@ -813,7 +813,13 @@ async function runImport(session: ImportSession, dryRun: boolean) {
 
   // ── Process each mapped file ────────────────────────────
 
-  for (const fileCfg of mapping.files) {
+  // Process users FIRST, then payments, then transactions (order matters for linking)
+  const sortedFiles = [...mapping.files].sort((a, b) => {
+    const order: Record<string, number> = { users: 0, payments: 1, transactions: 2 }
+    return (order[a.type] ?? 9) - (order[b.type] ?? 9)
+  })
+
+  for (const fileCfg of sortedFiles) {
     const cfgId = (fileCfg as any).fileId || (fileCfg as any).id
     const fileRecord = session.files.find(f => f.fileId === cfgId)
     if (!fileRecord) {
@@ -1004,6 +1010,10 @@ async function runImport(session: ImportSession, dryRun: boolean) {
           }
         }
       }
+    }
+
+    if (fileCfg.type === 'users') {
+      console.log('After users: legacyToDbId size =', legacyToDbId.size, 'first 3:', [...legacyToDbId.keys()].slice(0, 3))
     }
 
     // ── PAYMENTS ───────────────────────────────────────────
