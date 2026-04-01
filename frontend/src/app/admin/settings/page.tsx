@@ -111,6 +111,27 @@ export default function SettingsPage() {
                     <RotateCcw className="w-3.5 h-3.5" /> Перезапустить Wizard
                   </button>
                 </div>
+                <div className="pt-4 border-t border-gray-100">
+                  <p className="text-xs text-red-500 font-medium mb-1">Опасная зона</p>
+                  <p className="text-xs text-gray-400 mb-3">Полная очистка базы данных. Удаляются все пользователи, платежи, транзакции, настройки. Ваша учётная запись администратора сохраняется.</p>
+                  <button onClick={async () => {
+                    const confirm1 = prompt('Введите "УДАЛИТЬ ВСЁ" для подтверждения:')
+                    if (confirm1 !== 'УДАЛИТЬ ВСЁ') return
+                    if (!confirm('ПОСЛЕДНЕЕ ПРЕДУПРЕЖДЕНИЕ: Все данные будут удалены безвозвратно. Продолжить?')) return
+                    try {
+                      const res = await fetch('/api/admin/danger/wipe', { method: 'POST', credentials: 'include' })
+                      const data = await res.json()
+                      if (res.ok) {
+                        toast.success('База очищена')
+                        window.location.reload()
+                      } else {
+                        toast.error(data.error || 'Ошибка')
+                      }
+                    } catch { toast.error('Ошибка') }
+                  }} className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 flex items-center gap-1.5">
+                    <Trash2 className="w-3.5 h-3.5" /> Очистить всю базу данных
+                  </button>
+                </div>
               </>
             )}
 

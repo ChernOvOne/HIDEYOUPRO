@@ -71,4 +71,55 @@ export async function adminRoutes(app: FastifyInstance) {
     await loadDbSettings()
     return { ok: true }
   })
+
+  // POST /danger/wipe — wipe entire database except current admin
+  app.post('/danger/wipe', { preHandler: [app.adminStrict] }, async (req) => {
+    const adminId = (req.user as any).id
+
+    // Delete in correct order (foreign keys)
+    const tables = [
+      'auditLog', 'botMessage', 'promoUsage', 'emailVerification',
+      'balanceTransaction', 'userTag', 'userVariable', 'adminNote',
+      'notificationRead', 'notification', 'referralBonus',
+      'giftSubscription', 'session', 'importRecord',
+      'payment', 'inkasRecord',
+      'transaction', 'autoTagRule',
+      'recurringPayment', 'server', 'partner',
+      'campaign', 'monthlyStats', 'milestone',
+      'broadcastLog', 'broadcast',
+      'funnelStepAction', 'funnelStepCondition', 'funnelStep', 'funnel',
+      'botBlock', 'botBlockGroup',
+      'notificationChannel',
+      'promoCode', 'newsArticle', 'instructionStep', 'instructionApp', 'instructionPlatform',
+      'proxy', 'landingSection', 'category',
+    ]
+
+    let deleted = 0
+    for (const table of tables) {
+      try {
+        const result = await (prisma as any)[table].deleteMany({})
+        deleted += result.count
+      } catch {}
+    }
+
+    // Delete all users EXCEPT current admin
+    const userResult = await prisma.user.deleteMany({
+      where: { id: { not: adminId } },
+    })
+    deleted += userResult.count
+
+    // Delete tariffs
+    try {
+      const tariffResult = await prisma.tariff.deleteMany({})
+      deleted += tariffResult.count
+    } catch {}
+
+    // Reset admin stats
+    await prisma.user.update({
+      where: { id: adminId },
+      data: { totalPaid: 0, paymentsCount: 0, bonusDays: 0 },
+    })
+
+    return { ok: true, deleted, message: `Удалено ${deleted} записей. Ваша учётка сохранена.` }
+  })
 }
