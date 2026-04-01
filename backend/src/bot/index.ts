@@ -12,8 +12,8 @@ import { getUserState, clearUserState } from './state'
 // ── Redis for state management ───────────────────────────────
 const redis = new Redis(config.redis.url)
 
-// ── Bot instance ─────────────────────────────────────────────
-export const bot = new Bot(config.telegram.botToken)
+// ── Bot instance (lazy — token may not be set at startup) ────
+export const bot = new Bot(config.telegram.botToken || 'placeholder:token')
 
 // ── Settings cache ───────────────────────────────────────────
 const settingsCache = new Map<string, string>()
@@ -1503,6 +1503,11 @@ export async function sendTelegramMessage(telegramId: string, text: string) {
 // ══════════════════════════════════════════════════════════════
 
 export async function startBot() {
+  if (!config.telegram.botToken) {
+    logger.warn('TELEGRAM_BOT_TOKEN not set — bot disabled')
+    return
+  }
+
   // Load bot messages from Settings table
   await loadBotSettings()
   // Load no-code block cache
