@@ -234,13 +234,20 @@ export default function AdminImportExport() {
           continue
         }
         const data = await res.json()
+        // Backend returns headers[] and sampleRows[][] — convert to our format
+        const columns = data.headers || data.columns || []
+        const sampleData = (data.sampleRows || []).map((row: string[]) => {
+          const obj: Record<string, string> = {}
+          columns.forEach((col: string, i: number) => { obj[col] = row[i] || '' })
+          return obj
+        })
         setFiles(prev => [...prev, {
-          id: data.id || uid(),
+          id: data.fileId || uid(),
           name: file.name,
-          type: data.type || 'users',
+          type: 'users' as FileType,
           rowCount: data.rowCount || 0,
-          columns: data.columns || [],
-          sampleData: data.sampleData || [],
+          columns,
+          sampleData,
           mapping: data.autoMapping || {},
           autoMapping: data.autoMapping || {},
         }])
