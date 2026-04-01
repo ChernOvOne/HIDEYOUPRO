@@ -448,7 +448,10 @@ export default function AdminImportExport() {
       const res = await apiFetch(`/api/admin/data-import/sessions/${sessionId}/execute`, {
         method: 'POST',
       })
-      if (!res.ok) throw new Error('Ошибка запуска импорта')
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || `Ошибка ${res.status}. Попробуйте загрузить файл заново.`)
+      }
 
       // simulate progress (real app would use SSE/WebSocket)
       const steps = [
