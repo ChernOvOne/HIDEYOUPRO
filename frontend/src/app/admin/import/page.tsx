@@ -397,15 +397,34 @@ export default function AdminImportExport() {
     setPreviewing(true)
     setPreview(null)
     try {
-      // Auto-save mapping before preview
-      await saveMapping()
+      // Save mapping first (without step change)
+      const payload = {
+        files: files.map(f => ({ id: f.id, type: f.type, mapping: f.mapping })),
+        extractors: extractors.map(e => ({
+          fileId: e.fileId, sourceColumn: e.sourceColumn,
+          regex: e.regex, targetField: e.targetField,
+        })),
+        crossLinks: crossLinks.map(l => ({
+          sourceFileId: l.sourceFileId, sourceField: l.sourceField,
+          sourceRegex: l.sourceRegex, targetFileId: l.targetFileId,
+          targetField: l.targetField,
+        })),
+      }
+      const mapRes = await apiFetch(`/api/admin/data-import/sessions/${sessionId}/mapping`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!mapRes.ok) throw new Error('Не удалось сохранить маппинг')
 
+      // Now run preview
       const res = await apiFetch(`/api/admin/data-import/sessions/${sessionId}/preview`, {
         method: 'POST',
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Ошибка предварительного просмотра')
       setPreview(data)
+      setStep(3)
       toast.success('Предварительный просмотр готов')
     } catch (err: any) {
       toast.error(err.message || 'Ошибка')
