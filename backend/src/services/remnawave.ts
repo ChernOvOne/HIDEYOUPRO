@@ -81,6 +81,22 @@ class RemnawaveService {
     return data.response ?? data
   }
 
+  async extendSubscription(uuid: string, days: number) {
+    const cfg = await this.getConfig()
+    const user = await this.getUserByUuid(uuid)
+    const currentExpire = user.expireAt ? new Date(user.expireAt) : new Date()
+    const base = currentExpire > new Date() ? currentExpire : new Date()
+    const newExpire = new Date(base.getTime() + days * 86400_000)
+    const { data } = await axios.patch(`/users/${uuid}`, { expireAt: newExpire.toISOString() }, cfg)
+    return data.response ?? data
+  }
+
+  async deleteDevice(uuid: string, hwid: string) {
+    const cfg = await this.getConfig()
+    const { data } = await axios.delete(`/users/${uuid}/devices/${hwid}`, cfg)
+    return data.response ?? data
+  }
+
   getSubscriptionUrl(uuid: string, customUrl?: string) {
     if (customUrl) return `${this.baseUrl}${customUrl}`
     return `${this.baseUrl}/sub/${uuid}`
