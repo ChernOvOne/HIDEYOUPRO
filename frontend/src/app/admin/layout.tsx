@@ -39,13 +39,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
+    let cancelled = false
     api.me()
       .then(u => {
-        if (u.role !== 'ADMIN' && u.role !== 'EDITOR') router.push('/login')
-        else { setUser(u); setLoading(false) }
+        if (cancelled) return
+        if (u.role !== 'ADMIN' && u.role !== 'EDITOR') {
+          setLoading(false) // show nothing, middleware handles redirect
+        } else {
+          setUser(u)
+          setLoading(false)
+        }
       })
-      .catch(() => router.push('/login'))
-  }, [router])
+      .catch(() => {
+        if (!cancelled) setLoading(false) // middleware handles redirect
+      })
+    return () => { cancelled = true }
+  }, [])
 
   const logout = async () => {
     await api.logout()

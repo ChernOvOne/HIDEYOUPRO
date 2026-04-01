@@ -19,7 +19,7 @@ export default function LoginPage() {
   useEffect(() => {
     // Check if already logged in
     api.me()
-      .then(() => router.push('/admin'))
+      .then(() => { window.location.href = '/admin' })
       .catch(() => {
         // Check if first admin needs to be created
         api.setupStatus()
@@ -30,8 +30,8 @@ export default function LoginPage() {
             }
           })
           .catch(() => {})
+          .finally(() => setChecking(false))
       })
-      .finally(() => setChecking(false))
   }, [router])
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,15 +41,15 @@ export default function LoginPage() {
       if (mode === 'register') {
         await api.register({ email, password, name })
         toast.success('Администратор создан!')
-        router.push('/setup')
+        window.location.href = '/setup'
       } else {
         await api.login(email, password)
         // Check if setup is needed
         const status = await api.setupStatus()
         if (!status.steps.setup_complete) {
-          router.push('/setup')
+          window.location.href = '/setup'
         } else {
-          router.push('/admin')
+          window.location.href = '/admin'
         }
       }
     } catch (err: any) {

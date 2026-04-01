@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Building2, Wifi, MessageCircle, CreditCard, CheckCircle2, ChevronRight,
@@ -8,6 +8,34 @@ import {
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
+
+// Field and Toggle defined OUTSIDE the component to avoid re-mount on state change
+const Field = memo(({ label, value, onChange, type, placeholder, hint }: {
+  label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string; hint?: string
+}) => (
+  <div>
+    <label className="text-xs font-medium text-gray-500 mb-1 block">{label}</label>
+    <input type={type || 'text'} value={value} onChange={e => onChange(e.target.value)}
+      className="input" placeholder={placeholder} />
+    {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+  </div>
+))
+Field.displayName = 'Field'
+
+const ToggleField = memo(({ label, checked, onChange, hint }: {
+  label: string; checked: boolean; onChange: (v: boolean) => void; hint?: string
+}) => (
+  <div className="flex items-center justify-between py-2">
+    <div>
+      <span className="text-sm text-gray-700">{label}</span>
+      {hint && <p className="text-xs text-gray-400">{hint}</p>}
+    </div>
+    <button type="button" onClick={() => onChange(!checked)}
+      className={`w-10 h-5 rounded-full transition-colors ${checked ? 'bg-primary-600' : 'bg-gray-200'}`}>
+      <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
+    </button>
+  </div>
+))
 
 const STEPS = [
   { id: 'company',   icon: Building2,      title: 'Компания',        desc: 'Название, валюта, поддержка' },
@@ -17,10 +45,12 @@ const STEPS = [
   { id: 'payments',  icon: CreditCard,     title: 'Платежи',         desc: 'ЮKassa, CryptoPay, Stars' },
   { id: 'email',     icon: Mail,           title: 'Email (SMTP)',    desc: 'Рассылки и уведомления' },
   { id: 'referral',  icon: Users,          title: 'Рефералы',        desc: 'Бонусы за приглашения' },
-  { id: 'accounting',icon: DollarSign,     title: 'Бухгалтерия',     desc: 'Категории расходов/доходов' },
+  { id: 'accounting',icon: DollarSign,     title: 'Бухгалтерия',     desc: 'Баланс, категории, расходы' },
+  { id: 'servers',   icon: Globe,          title: 'Серверы',          desc: 'VPS и хостинг' },
+  { id: 'partners',  icon: Users,          title: 'Партнёры',         desc: 'Инвесторы и доли' },
 ]
 
-const SKIP_ALLOWED = new Set(['domains', 'remnawave', 'telegram', 'payments', 'email', 'referral', 'accounting'])
+const SKIP_ALLOWED = new Set(['domains', 'remnawave', 'telegram', 'payments', 'email', 'referral', 'accounting', 'servers', 'partners'])
 
 export default function SetupPage() {
   const router = useRouter()
@@ -44,7 +74,14 @@ export default function SetupPage() {
     referralEnabled: 'true', referralBonusDays: '30', referralMinDays: '30',
     // Бухгалтерия
     defaultCategories: 'true',
+    startingBalance: '0',
   })
+
+  // Dynamic lists for servers and partners
+  const [customCats, setCustomCats] = useState<{ name: string; type: string; color: string }[]>([])
+  const [servers, setServers] = useState<{ name: string; provider: string; ip: string; monthlyCost: string; currency: string }[]>([])
+  const [partners, setPartners] = useState<{ name: string; role: string; share: string; contact: string }[]>([])
+  const [recurringExpenses, setRecurringExpenses] = useState<{ name: string; amount: string; paymentDay: string }[]>([])
 
   useEffect(() => {
     api.me().catch(() => router.push('/login'))
@@ -121,6 +158,62 @@ export default function SetupPage() {
               } catch {}
             }
           }
+          // Custom categories
+          for (const c of customCats.filter(c => c.name.trim())) {
+            try {
+              await fetch('/api/admin/accounting/categories', {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(c),
+              })
+            } catch {}
+          }
+          // Starting balance as transaction
+          if (Number(form.startingBalance) > 0) {
+            try {
+              await fetch('/api/admin/accounting/transactions', {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  type: 'INCOME', amount: Number(form.startingBalance),
+                  description: 'Начальный остаток на счёте',
+                  date: new Date().toISOString().split('T')[0],
+                }),
+              })
+            } catch {}
+          }
+          // Recurring expenses
+          for (const r of recurringExpenses.filter(r => r.name.trim() && r.amount)) {
+            try {
+              await fetch('/api/admin/extras/recurring', {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: r.name, amount: Number(r.amount), paymentDay: Number(r.paymentDay) || 1, currency: 'RUB' }),
+              })
+            } catch {}
+          }
+          break
+        case 'servers':
+          for (const s of servers.filter(s => s.name.trim())) {
+            try {
+              await fetch('/api/admin/servers', {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: s.name, provider: s.provider, ipAddress: s.ip, monthlyCost: Number(s.monthlyCost) || 0, currency: s.currency }),
+              })
+            } catch {}
+          }
+          break
+        case 'partners':
+          for (const p of partners.filter(p => p.name.trim())) {
+            try {
+              await fetch('/api/admin/partners', {
+                method: 'POST', credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: p.name, role: p.role || 'partner', share: Number(p.share) || 0, contact: p.contact }),
+              })
+            } catch {}
+          }
           break
       }
 
@@ -145,27 +238,13 @@ export default function SetupPage() {
 
   const back = () => { if (step > 0) setStep(step - 1) }
 
-  const F = ({ label, k, type, placeholder, hint }: { label: string; k: string; type?: string; placeholder?: string; hint?: string }) => (
-    <div>
-      <label className="text-xs font-medium text-gray-500 mb-1 block">{label}</label>
-      <input type={type || 'text'} value={form[k] || ''} onChange={e => upd(k, e.target.value)}
-        className="input" placeholder={placeholder} />
-      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
-    </div>
-  )
-
-  const Toggle = ({ label, k, hint }: { label: string; k: string; hint?: string }) => (
-    <div className="flex items-center justify-between py-2">
-      <div>
-        <span className="text-sm text-gray-700">{label}</span>
-        {hint && <p className="text-xs text-gray-400">{hint}</p>}
-      </div>
-      <button onClick={() => upd(k, form[k] === 'true' ? 'false' : 'true')}
-        className={`w-10 h-5 rounded-full transition-colors ${form[k] === 'true' ? 'bg-primary-600' : 'bg-gray-200'}`}>
-        <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${form[k] === 'true' ? 'translate-x-5' : 'translate-x-0.5'}`} />
-      </button>
-    </div>
-  )
+  // Helper to create Field props from form key
+  const f = (label: string, k: string, opts?: { type?: string; placeholder?: string; hint?: string }) => ({
+    label, value: form[k] || '', onChange: (v: string) => upd(k, v), ...opts,
+  })
+  const t = (label: string, k: string, hint?: string) => ({
+    label, checked: form[k] === 'true', onChange: (v: boolean) => upd(k, String(v)), hint,
+  })
 
   return (
     <div className="min-h-screen bg-surface flex items-center justify-center px-4 py-8">
@@ -199,7 +278,7 @@ export default function SetupPage() {
           {/* === Компания === */}
           {step === 0 && (
             <div className="space-y-4">
-              <F label="Название проекта *" k="companyName" placeholder="HIDEYOU VPN" />
+              <Field {...f('Название проекта *', 'companyName', { placeholder: 'HIDEYOU VPN' })} />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-gray-500 mb-1 block">Валюта</label>
@@ -221,8 +300,8 @@ export default function SetupPage() {
                   </select>
                 </div>
               </div>
-              <F label="Ссылка на поддержку" k="supportUrl" placeholder="https://t.me/support" />
-              <F label="Telegram-канал" k="tgChannel" placeholder="https://t.me/channel" />
+              <Field {...f("Ссылка на поддержку", "supportUrl", { placeholder: "https://t.me/support" })} />
+              <Field {...f("Telegram-канал", "tgChannel", { placeholder: "https://t.me/channel" })} />
             </div>
           )}
 
@@ -232,10 +311,10 @@ export default function SetupPage() {
               <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
                 Укажите домены для личного кабинета и webhook. Можно пропустить и настроить позже.
               </div>
-              <F label="Домен ЛК" k="lkDomain" placeholder="lk.example.com" hint="Домен личного кабинета пользователя" />
-              <F label="URL ЛК" k="lkUrl" placeholder="https://lk.example.com" hint="Полный URL (с https://)" />
-              <F label="Домен Webhook" k="webhookDomain" placeholder="api.example.com" hint="Домен для приёма webhook от платёжных систем" />
-              <F label="MiniApp URL" k="miniappUrl" placeholder="https://app.example.com" hint="URL Telegram MiniApp (кнопка в боте)" />
+              <Field {...f("Домен ЛК", "lkDomain", { placeholder: "lk.example.com", hint: "Домен личного кабинета пользователя" })} />
+              <Field {...f("URL ЛК", "lkUrl", { placeholder: "https://lk.example.com", hint: "Полный URL (с https://)" })} />
+              <Field {...f("Домен Webhook", "webhookDomain", { placeholder: "api.example.com", hint: "Домен для приёма webhook от платёжных систем" })} />
+              <Field {...f("MiniApp URL", "miniappUrl", { placeholder: "https://app.example.com", hint: "URL Telegram MiniApp (кнопка в боте)" })} />
             </div>
           )}
 
@@ -245,8 +324,8 @@ export default function SetupPage() {
               <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
                 Подключите REMNAWAVE-панель для управления VPN-подписками. Можно пропустить.
               </div>
-              <F label="URL панели" k="remnawaveUrl" placeholder="https://panel.example.com" />
-              <F label="API токен" k="remnawaveToken" type="password" placeholder="Bearer token" />
+              <Field {...f("URL панели", "remnawaveUrl", { placeholder: "https://panel.example.com" })} />
+              <Field {...f("API токен", "remnawaveToken", { type: "password", placeholder: "Bearer token" })} />
             </div>
           )}
 
@@ -256,8 +335,8 @@ export default function SetupPage() {
               <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
                 Создайте бота через @BotFather и вставьте токен. Можно пропустить.
               </div>
-              <F label="Токен бота" k="botToken" type="password" placeholder="123456:ABC-DEF..." />
-              <F label="Username бота (без @)" k="botName" placeholder="MyVPNBot" />
+              <Field {...f("Токен бота", "botToken", { type: "password", placeholder: "123456:ABC-DEF..." })} />
+              <Field {...f("Username бота (без @)", "botName", { placeholder: "MyVPNBot" })} />
             </div>
           )}
 
@@ -268,11 +347,11 @@ export default function SetupPage() {
                 Подключите платёжные системы. Все поля необязательны.
               </div>
               <p className="text-xs font-medium text-gray-500 pt-1">ЮKassa</p>
-              <F label="Shop ID" k="yukassaShopId" placeholder="Идентификатор магазина" />
-              <F label="Secret Key" k="yukassaSecretKey" type="password" placeholder="Секретный ключ" />
+              <Field {...f("Shop ID", "yukassaShopId", { placeholder: "Идентификатор магазина" })} />
+              <Field {...f("Secret Key", "yukassaSecretKey", { type: "password", placeholder: "Секретный ключ" })} />
               <p className="text-xs font-medium text-gray-500 pt-2">CryptoPay</p>
-              <F label="API Token" k="cryptopayToken" type="password" placeholder="Токен CryptoPay" />
-              <Toggle label="Telegram Stars" k="starsEnabled" hint="Принимать оплату через Telegram Stars" />
+              <Field {...f("API Token", "cryptopayToken", { type: "password", placeholder: "Токен CryptoPay" })} />
+              <ToggleField {...t("Telegram Stars", "starsEnabled", "Принимать оплату через Telegram Stars")} />
             </div>
           )}
 
@@ -283,12 +362,12 @@ export default function SetupPage() {
                 SMTP для рассылок и email-уведомлений. Можно пропустить.
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <F label="SMTP хост" k="smtpHost" placeholder="smtp.gmail.com" />
-                <F label="Порт" k="smtpPort" placeholder="587" />
+                <Field {...f("SMTP хост", "smtpHost", { placeholder: "smtp.gmail.com" })} />
+                <Field {...f("Порт", "smtpPort", { placeholder: "587" })} />
               </div>
-              <F label="Логин" k="smtpUser" placeholder="user@example.com" />
-              <F label="Пароль" k="smtpPass" type="password" placeholder="Пароль или App Password" />
-              <F label="Отправитель (From)" k="smtpFrom" placeholder="noreply@example.com" />
+              <Field {...f("Логин", "smtpUser", { placeholder: "user@example.com" })} />
+              <Field {...f("Пароль", "smtpPass", { type: "password", placeholder: "Пароль или App Password" })} />
+              <Field {...f("Отправитель (From)", "smtpFrom", { placeholder: "noreply@example.com" })} />
             </div>
           )}
 
@@ -298,12 +377,11 @@ export default function SetupPage() {
               <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
                 Реферальная программа. Пользователи получают бонусные дни за приглашённых друзей.
               </div>
-              <Toggle label="Включить реферальную программу" k="referralEnabled" />
+              <ToggleField {...t("Включить реферальную программу", "referralEnabled")} />
               {form.referralEnabled === 'true' && (
                 <>
-                  <F label="Бонусные дни за реферала" k="referralBonusDays" type="number" placeholder="30" />
-                  <F label="Мин. дней подписки у реферала" k="referralMinDays" type="number" placeholder="30"
-                    hint="Реферал должен иметь подписку не менее N дней чтобы бонус начислился" />
+                  <Field {...f("Бонусные дни за реферала", "referralBonusDays", { type: "number", placeholder: "30" })} />
+                  <Field {...f("Мин. дней подписки у реферала", "referralMinDays", { type: "number", placeholder: "30", hint: "Реферал должен иметь подписку не менее N дней чтобы бонус начислился" })} />
                 </>
               )}
             </div>
@@ -313,12 +391,15 @@ export default function SetupPage() {
           {step === 7 && (
             <div className="space-y-4">
               <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
-                Создадим стандартные категории доходов и расходов для бухгалтерии. Можно изменить позже в настройках.
+                Настройте начальный баланс, категории и постоянные расходы. Всё можно изменить позже.
               </div>
-              <Toggle label="Создать стандартные категории" k="defaultCategories"
-                hint="Серверы, Реклама, Зарплаты, Подписки, Оплата VPN, Рефералы" />
+
+              <Field {...f("Текущий остаток на счёте (₽)", "startingBalance", { type: "number", placeholder: "0", hint: "Сумма на вашем основном счёте прямо сейчас" })} />
+
+              <ToggleField {...t("Создать стандартные категории", "defaultCategories", "Серверы, Реклама, Зарплаты, Подписки, Оплата VPN, Рефералы")} />
+
               <div className="rounded-lg bg-gray-50 p-4">
-                <p className="text-xs font-medium text-gray-500 mb-2">Будут созданы:</p>
+                <p className="text-xs font-medium text-gray-500 mb-2">Стандартные категории:</p>
                 <div className="grid grid-cols-2 gap-1 text-xs text-gray-600">
                   <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" />Оплата VPN</div>
                   <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" />Рефералы</div>
@@ -326,10 +407,101 @@ export default function SetupPage() {
                   <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500" />Серверы</div>
                   <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500" />Реклама</div>
                   <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500" />Зарплаты</div>
-                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-pink-500" />Подписки (сервисы)</div>
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-pink-500" />Подписки</div>
                   <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gray-500" />Прочие расходы</div>
                 </div>
               </div>
+
+              {/* Custom categories */}
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-2">Свои категории (необязательно):</p>
+                {customCats.map((c, i) => (
+                  <div key={i} className="flex gap-2 mb-2 items-center">
+                    <input value={c.name} onChange={e => { const n = [...customCats]; n[i].name = e.target.value; setCustomCats(n) }} className="input flex-1" placeholder="Название" />
+                    <select value={c.type} onChange={e => { const n = [...customCats]; n[i].type = e.target.value; setCustomCats(n) }} className="input w-28 bg-white">
+                      <option value="EXPENSE">Расход</option>
+                      <option value="INCOME">Доход</option>
+                    </select>
+                    <button onClick={() => setCustomCats(customCats.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600 text-xs px-2">x</button>
+                  </div>
+                ))}
+                <button onClick={() => setCustomCats([...customCats, { name: '', type: 'EXPENSE', color: '#6B7280' }])}
+                  className="text-xs text-primary-600 hover:text-primary-700 font-medium">+ Добавить категорию</button>
+              </div>
+
+              {/* Recurring expenses */}
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-2">Постоянные расходы (необязательно):</p>
+                {recurringExpenses.map((r, i) => (
+                  <div key={i} className="flex gap-2 mb-2 items-center">
+                    <input value={r.name} onChange={e => { const n = [...recurringExpenses]; n[i].name = e.target.value; setRecurringExpenses(n) }} className="input flex-1" placeholder="Название (VPS, домен...)" />
+                    <input value={r.amount} onChange={e => { const n = [...recurringExpenses]; n[i].amount = e.target.value; setRecurringExpenses(n) }} className="input w-24" type="number" placeholder="Сумма" />
+                    <input value={r.paymentDay} onChange={e => { const n = [...recurringExpenses]; n[i].paymentDay = e.target.value; setRecurringExpenses(n) }} className="input w-16" type="number" placeholder="День" min="1" max="31" />
+                    <button onClick={() => setRecurringExpenses(recurringExpenses.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600 text-xs px-2">x</button>
+                  </div>
+                ))}
+                <button onClick={() => setRecurringExpenses([...recurringExpenses, { name: '', amount: '', paymentDay: '1' }])}
+                  className="text-xs text-primary-600 hover:text-primary-700 font-medium">+ Добавить расход</button>
+              </div>
+            </div>
+          )}
+
+          {/* === Серверы === */}
+          {step === 8 && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
+                Добавьте серверы (VPS, хостинг) для учёта расходов и мониторинга оплат.
+              </div>
+              {servers.map((s, i) => (
+                <div key={i} className="rounded-lg bg-gray-50 p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <input value={s.name} onChange={e => { const n = [...servers]; n[i].name = e.target.value; setServers(n) }} className="input flex-1" placeholder="Название (Frankfurt-1)" />
+                    <button onClick={() => setServers(servers.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600 text-xs px-2">x</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={s.provider} onChange={e => { const n = [...servers]; n[i].provider = e.target.value; setServers(n) }} className="input" placeholder="Провайдер (Hetzner)" />
+                    <input value={s.ip} onChange={e => { const n = [...servers]; n[i].ip = e.target.value; setServers(n) }} className="input" placeholder="IP адрес" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input value={s.monthlyCost} onChange={e => { const n = [...servers]; n[i].monthlyCost = e.target.value; setServers(n) }} className="input" type="number" placeholder="Стоимость/мес" />
+                    <select value={s.currency} onChange={e => { const n = [...servers]; n[i].currency = e.target.value; setServers(n) }} className="input bg-white">
+                      <option value="RUB">RUB</option>
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                    </select>
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => setServers([...servers, { name: '', provider: '', ip: '', monthlyCost: '', currency: 'RUB' }])}
+                className="w-full py-2 rounded-lg border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:border-primary-300 hover:text-primary-600 transition-colors">
+                + Добавить сервер
+              </button>
+            </div>
+          )}
+
+          {/* === Партнёры === */}
+          {step === 9 && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
+                Добавьте партнёров и инвесторов для учёта долей и выплат.
+              </div>
+              {partners.map((p, i) => (
+                <div key={i} className="rounded-lg bg-gray-50 p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <input value={p.name} onChange={e => { const n = [...partners]; n[i].name = e.target.value; setPartners(n) }} className="input flex-1" placeholder="Имя партнёра" />
+                    <button onClick={() => setPartners(partners.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600 text-xs px-2">x</button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <input value={p.role} onChange={e => { const n = [...partners]; n[i].role = e.target.value; setPartners(n) }} className="input" placeholder="Роль (инвестор)" />
+                    <input value={p.share} onChange={e => { const n = [...partners]; n[i].share = e.target.value; setPartners(n) }} className="input" type="number" placeholder="Доля %" />
+                    <input value={p.contact} onChange={e => { const n = [...partners]; n[i].contact = e.target.value; setPartners(n) }} className="input" placeholder="Контакт (@tg)" />
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => setPartners([...partners, { name: '', role: '', share: '', contact: '' }])}
+                className="w-full py-2 rounded-lg border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:border-primary-300 hover:text-primary-600 transition-colors">
+                + Добавить партнёра
+              </button>
             </div>
           )}
 
