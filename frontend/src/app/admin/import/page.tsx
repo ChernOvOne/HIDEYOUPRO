@@ -70,62 +70,73 @@ const FILE_TYPE_LABELS: Record<FileType, string> = {
   transactions: 'Транзакции',
 }
 
-const SYSTEM_FIELDS: Record<FileType, { value: string; label: string }[]> = {
+type FieldDef = { value: string; label: string; hint: string; group: string; example?: string }
+
+const SYSTEM_FIELDS: Record<FileType, FieldDef[]> = {
   users: [
-    { value: '__skip', label: '— Пропустить —' },
-    { value: 'legacyId', label: 'ID (старая система)' },
-    { value: 'telegramId', label: 'Telegram ID' },
-    { value: 'telegramName', label: 'Telegram Username' },
-    { value: 'name', label: 'Имя' },
-    { value: 'email', label: 'Email' },
-    { value: 'phone', label: 'Телефон' },
-    { value: 'remnawaveUuid', label: 'UUID REMNAWAVE' },
-    { value: 'subLink', label: 'Ссылка подписки' },
-    { value: 'subStatus', label: 'Статус подписки (ACTIVE/INACTIVE/EXPIRED)' },
-    { value: 'subExpireAt', label: 'Дата окончания подписки' },
-    { value: 'balance', label: 'Баланс' },
-    { value: 'referralCode', label: 'Реферальный код' },
-    { value: 'referrerId', label: 'ID реферера (Legacy ID пригласившего)' },
-    { value: 'utmCode', label: 'UTM код' },
-    { value: 'source', label: 'Источник' },
-    { value: 'notes', label: 'Заметки' },
-    { value: 'totalPaid', label: 'Всего оплачено' },
-    { value: 'bonusDays', label: 'Бонусные дни' },
-    { value: 'createdAt', label: 'Дата регистрации' },
-    { value: 'lastLoginAt', label: 'Последний вход' },
-    { value: 'isActive', label: 'Активен (true/false)' },
-    { value: 'role', label: 'Роль (USER/ADMIN)' },
+    { value: '__skip', label: 'Пропустить', hint: 'Не импортировать эту колонку', group: '' },
+    // Идентификация
+    { value: 'legacyId', label: 'ID (старая система)', hint: 'Уникальный номер из прошлого сервиса. Нужен для связи с платежами', group: 'Идентификация', example: '14128800' },
+    { value: 'telegramId', label: 'Telegram ID', hint: 'Числовой ID в Telegram (не username). По нему ищем пользователя в базе', group: 'Идентификация', example: '344322658' },
+    { value: 'telegramName', label: 'Telegram Username', hint: 'Ник в телеграме без @', group: 'Идентификация', example: 'ivan_petrov' },
+    { value: 'name', label: 'Имя', hint: 'Имя или ФИО пользователя', group: 'Идентификация', example: 'Иван Петров' },
+    { value: 'email', label: 'Email', hint: 'Электронная почта. Тоже используется для поиска', group: 'Идентификация', example: 'user@mail.ru' },
+    { value: 'phone', label: 'Телефон', hint: 'Номер телефона', group: 'Идентификация', example: '79991234567' },
+    // VPN
+    { value: 'remnawaveUuid', label: 'UUID REMNAWAVE', hint: 'UUID ключа в панели REMNAWAVE', group: 'VPN подписка', example: 'f1a7770e-0375-...' },
+    { value: 'subLink', label: 'Ссылка подписки', hint: 'URL для подключения VPN', group: 'VPN подписка', example: 'https://user.example.com/sub/...' },
+    { value: 'subStatus', label: 'Статус подписки', hint: 'ACTIVE, INACTIVE, EXPIRED или TRIAL', group: 'VPN подписка', example: 'ACTIVE' },
+    { value: 'subExpireAt', label: 'Дата окончания', hint: 'Когда истекает подписка (ДД.ММ.ГГГГ или ISO)', group: 'VPN подписка', example: '25.12.2026' },
+    // Финансы
+    { value: 'balance', label: 'Баланс', hint: 'Текущий баланс в рублях', group: 'Финансы', example: '500.00' },
+    { value: 'totalPaid', label: 'Всего оплачено', hint: 'Сумма всех платежей за всё время', group: 'Финансы', example: '2400.00' },
+    { value: 'bonusDays', label: 'Бонусные дни', hint: 'Накопленные бонусные дни', group: 'Финансы', example: '30' },
+    // Рефералы
+    { value: 'referralCode', label: 'Реферальный код', hint: 'Код для приглашения друзей', group: 'Рефералы', example: 'abc123' },
+    { value: 'referrerId', label: 'ID пригласившего', hint: 'Legacy ID того, кто пригласил этого пользователя', group: 'Рефералы', example: '14128800' },
+    // Прочее
+    { value: 'utmCode', label: 'UTM метка', hint: 'Откуда пришёл пользователь', group: 'Прочее', example: 'tg_channel' },
+    { value: 'source', label: 'Источник', hint: 'Источник привлечения', group: 'Прочее', example: 'instagram' },
+    { value: 'notes', label: 'Заметки / Теги', hint: 'Любой текст или теги через запятую', group: 'Прочее', example: 'VIP, промо' },
+    { value: 'createdAt', label: 'Дата регистрации', hint: 'Когда пользователь зарегистрировался', group: 'Прочее', example: '15.11.2023' },
+    { value: 'lastLoginAt', label: 'Последний вход', hint: 'Дата последнего входа', group: 'Прочее', example: '01.04.2026' },
+    { value: 'isActive', label: 'Активен', hint: 'true или false — заблокирован ли', group: 'Прочее', example: 'true' },
+    { value: 'role', label: 'Роль', hint: 'USER или ADMIN', group: 'Прочее', example: 'USER' },
   ],
   payments: [
-    { value: '__skip', label: '— Пропустить —' },
-    { value: 'legacyId', label: 'ID пользователя (Legacy)' },
-    { value: 'telegramId', label: 'Telegram ID пользователя' },
-    { value: 'userEmail', label: 'Email пользователя' },
-    { value: 'amount', label: 'Сумма' },
-    { value: 'amountNet', label: 'Сумма к зачислению' },
-    { value: 'currency', label: 'Валюта' },
-    { value: 'status', label: 'Статус платежа' },
-    { value: 'method', label: 'Способ оплаты (карта, SberPay...)' },
-    { value: 'description', label: 'Описание' },
-    { value: 'externalId', label: 'ID платежа (внешний)' },
-    { value: 'provider', label: 'Провайдер (YUKASSA, CRYPTOPAY...)' },
-    { value: 'createdAt', label: 'Дата создания' },
-    { value: 'paidAt', label: 'Дата оплаты' },
-    { value: 'cardNumber', label: 'Номер карты' },
-    { value: 'rrn', label: 'RRN операции' },
-    { value: 'refundAmount', label: 'Сумма возврата' },
-    { value: 'refundDate', label: 'Дата возврата' },
+    { value: '__skip', label: 'Пропустить', hint: 'Не импортировать', group: '' },
+    // Привязка к пользователю
+    { value: 'legacyId', label: 'ID пользователя (Legacy)', hint: 'Для привязки платежа к пользователю через ID старой системы', group: 'Привязка', example: '14128800' },
+    { value: 'telegramId', label: 'Telegram ID', hint: 'Привязка по Telegram ID', group: 'Привязка', example: '344322658' },
+    { value: 'userEmail', label: 'Email пользователя', hint: 'Привязка по email', group: 'Привязка', example: 'user@mail.ru' },
+    // Платёж
+    { value: 'amount', label: 'Сумма', hint: 'Сумма платежа', group: 'Платёж', example: '469.00' },
+    { value: 'amountNet', label: 'К зачислению', hint: 'Сумма после комиссии', group: 'Платёж', example: '452.58' },
+    { value: 'currency', label: 'Валюта', hint: 'RUB, USD, USDT', group: 'Платёж', example: 'RUB' },
+    { value: 'status', label: 'Статус', hint: 'Оплачен, Отменен, В обработке', group: 'Платёж', example: 'Оплачен' },
+    { value: 'method', label: 'Способ оплаты', hint: 'Банковская карта, Т-Pay, SberPay...', group: 'Платёж', example: 'Т-Pay' },
+    { value: 'description', label: 'Описание', hint: 'Текст заказа. Можно извлечь ID через regex', group: 'Платёж', example: '[ID14128800] Иван' },
+    { value: 'externalId', label: 'ID платежа', hint: 'Уникальный ID из платёжной системы', group: 'Платёж', example: '315f1f57-000f-...' },
+    { value: 'provider', label: 'Провайдер', hint: 'YUKASSA, CRYPTOPAY, MANUAL', group: 'Платёж', example: 'YUKASSA' },
+    // Даты
+    { value: 'createdAt', label: 'Дата создания', hint: 'Когда заказ был создан', group: 'Даты', example: '01.04.2026 15:12:07' },
+    { value: 'paidAt', label: 'Дата оплаты', hint: 'Когда деньги пришли', group: 'Даты', example: '01.04.2026 15:14:16' },
+    // Доп.
+    { value: 'cardNumber', label: 'Номер карты', hint: 'Маскированный номер', group: 'Дополнительно', example: '220015|5792' },
+    { value: 'rrn', label: 'RRN', hint: 'Номер операции в банке', group: 'Дополнительно', example: '609116675610' },
+    { value: 'refundAmount', label: 'Сумма возврата', hint: 'Если был возврат', group: 'Дополнительно', example: '469.00' },
+    { value: 'refundDate', label: 'Дата возврата', hint: 'Когда вернули деньги', group: 'Дополнительно', example: '05.04.2026' },
   ],
   transactions: [
-    { value: '__skip', label: '— Пропустить —' },
-    { value: 'type', label: 'Тип (INCOME/EXPENSE)' },
-    { value: 'amount', label: 'Сумма' },
-    { value: 'description', label: 'Описание' },
-    { value: 'category', label: 'Категория' },
-    { value: 'createdAt', label: 'Дата' },
-    { value: 'legacyId', label: 'ID пользователя (Legacy)' },
-    { value: 'telegramId', label: 'Telegram ID' },
-    { value: 'userEmail', label: 'Email' },
+    { value: '__skip', label: 'Пропустить', hint: 'Не импортировать', group: '' },
+    { value: 'type', label: 'Тип', hint: 'INCOME (доход) или EXPENSE (расход)', group: 'Транзакция', example: 'INCOME' },
+    { value: 'amount', label: 'Сумма', hint: 'Сумма операции', group: 'Транзакция', example: '5000.00' },
+    { value: 'description', label: 'Описание', hint: 'За что платёж', group: 'Транзакция', example: 'Оплата сервера' },
+    { value: 'category', label: 'Категория', hint: 'Название категории (создастся если нет)', group: 'Транзакция', example: 'Серверы' },
+    { value: 'createdAt', label: 'Дата', hint: 'Дата операции', group: 'Транзакция', example: '15.03.2026' },
+    { value: 'legacyId', label: 'ID пользователя', hint: 'Для привязки к пользователю', group: 'Привязка', example: '14128800' },
+    { value: 'telegramId', label: 'Telegram ID', hint: 'Привязка по TG ID', group: 'Привязка', example: '344322658' },
+    { value: 'userEmail', label: 'Email', hint: 'Привязка по email', group: 'Привязка', example: 'user@mail.ru' },
   ],
 }
 
@@ -722,50 +733,124 @@ export default function AdminImportExport() {
             <div className="space-y-6">
               {files.map(f => (
                 <div key={f.id} className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
-                  <div className="flex items-center gap-3">
-                    <FileSpreadsheet className="w-5 h-5 text-primary-600" />
-                    <div>
-                      <h3 className="text-gray-900 font-medium text-sm">{f.name}</h3>
-                      <p className="text-gray-500 text-xs">{FILE_TYPE_LABELS[f.type]} · {f.rowCount} строк</p>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <FileSpreadsheet className="w-5 h-5 text-primary-600" />
+                      <div>
+                        <h3 className="text-gray-900 font-medium text-sm">{f.name}</h3>
+                        <p className="text-gray-500 text-xs">{FILE_TYPE_LABELS[f.type]} · {f.rowCount} строк · {f.columns.length} колонок</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => {
+                        setFiles(prev => prev.map(file => file.id === f.id ? { ...file, mapping: { ...file.autoMapping } } : file))
+                        toast.success('Автоматическое сопоставление')
+                      }} className="text-xs px-3 py-1.5 rounded-lg bg-primary-50 text-primary-600 hover:bg-primary-100 font-medium">
+                        Автоматически
+                      </button>
+                      <button onClick={() => {
+                        const reset: Record<string, string> = {}
+                        f.columns.forEach(c => { reset[c] = '__skip' })
+                        setFiles(prev => prev.map(file => file.id === f.id ? { ...file, mapping: reset } : file))
+                      }} className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 text-gray-500 hover:bg-gray-200">
+                        Сбросить
+                      </button>
                     </div>
                   </div>
 
-                  {/* Mapping table */}
-                  <div className="border border-gray-100 rounded-lg overflow-hidden">
-                    <div className="grid grid-cols-[1fr_1fr] bg-gray-50 px-4 py-2.5 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                      <span>Колонка файла</span>
-                      <span>Системное поле</span>
-                    </div>
-                    {f.columns.map((col, idx) => (
-                      <div
-                        key={col}
-                        className={`grid grid-cols-[1fr_1fr] px-4 py-3 items-center border-t border-gray-100 ${
-                          idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
-                        }`}
-                      >
-                        <div>
-                          <p className="text-gray-900 text-sm font-medium">{col}</p>
-                          {f.sampleData.length > 0 && (
-                            <div className="flex gap-2 mt-1">
-                              {f.sampleData.slice(0, 2).map((row, ri) => (
-                                <span key={ri} className="text-xs font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded truncate max-w-[140px]">
-                                  {truncate(row[col] || '—', 20)}
-                                </span>
-                              ))}
+                  {/* Info */}
+                  <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs space-y-1">
+                    <p className="font-medium">Как сопоставить колонки:</p>
+                    <p>Для каждой колонки из вашего файла выберите соответствующее поле в системе. Автоматически определённые показаны зелёным. Наведите на поле чтобы увидеть подсказку.</p>
+                    <p>Колонки которые не нужно импортировать — оставьте "Пропустить".</p>
+                  </div>
+
+                  {/* Mapping rows */}
+                  <div className="space-y-2">
+                    {f.columns.map((col, idx) => {
+                      const mapped = f.mapping[col] || '__skip'
+                      const isAuto = f.autoMapping[col] && f.autoMapping[col] === mapped && mapped !== '__skip'
+                      const isMapped = mapped !== '__skip'
+                      const fieldDef = SYSTEM_FIELDS[f.type].find(sf => sf.value === mapped)
+
+                      return (
+                        <div key={col} className={`rounded-lg border p-3 transition-colors ${
+                          isMapped ? 'border-primary-200 bg-primary-50/30' : 'border-gray-100 bg-white'
+                        }`}>
+                          <div className="flex items-start gap-4">
+                            {/* Left: file column */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-gray-900 text-sm font-medium">{col}</p>
+                                {isAuto && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-700">авто</span>
+                                )}
+                                {isMapped && !isAuto && (
+                                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-primary-100 text-primary-700">вручную</span>
+                                )}
+                              </div>
+                              {f.sampleData.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1.5">
+                                  {f.sampleData.slice(0, 3).map((row, ri) => (
+                                    <span key={ri} className="text-[11px] font-mono text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded truncate max-w-[160px] inline-block">
+                                      {truncate(row[col] || '—', 24)}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          )}
+
+                            {/* Right: system field */}
+                            <div className="w-[280px] flex-shrink-0">
+                              <select
+                                value={mapped}
+                                onChange={e => updateMapping(f.id, col, e.target.value)}
+                                className={`w-full border rounded-lg px-3 py-2 text-sm bg-white cursor-pointer ${
+                                  isMapped ? 'border-primary-300 text-primary-700 font-medium' : 'border-gray-200 text-gray-500'
+                                }`}
+                              >
+                                {(() => {
+                                  const groups = new Map<string, FieldDef[]>()
+                                  for (const sf of SYSTEM_FIELDS[f.type]) {
+                                    const g = sf.group || ''
+                                    if (!groups.has(g)) groups.set(g, [])
+                                    groups.get(g)!.push(sf)
+                                  }
+                                  const elements: JSX.Element[] = []
+                                  groups.forEach((fields, group) => {
+                                    if (group) {
+                                      elements.push(
+                                        <optgroup key={group} label={`── ${group} ──`}>
+                                          {fields.map(sf => (
+                                            <option key={sf.value} value={sf.value} title={sf.hint}>
+                                              {sf.label}{sf.example ? `  (${sf.example})` : ''}
+                                            </option>
+                                          ))}
+                                        </optgroup>
+                                      )
+                                    } else {
+                                      fields.forEach(sf => {
+                                        elements.push(<option key={sf.value} value={sf.value}>{sf.label}</option>)
+                                      })
+                                    }
+                                  })
+                                  return elements
+                                })()}
+                              </select>
+                              {fieldDef && fieldDef.value !== '__skip' && (
+                                <p className="text-[10px] text-gray-400 mt-1 pl-1">{fieldDef.hint}</p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <select
-                          value={f.mapping[col] || '__skip'}
-                          onChange={e => updateMapping(f.id, col, e.target.value)}
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                        >
-                          {SYSTEM_FIELDS[f.type].map(sf => (
-                            <option key={sf.value} value={sf.value}>{sf.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    ))}
+                      )
+                    })}
+                  </div>
+
+                  {/* Summary */}
+                  <div className="flex items-center gap-4 text-xs text-gray-400 pt-2">
+                    <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-500" /> {f.columns.filter(c => f.mapping[c] && f.mapping[c] !== '__skip').length} сопоставлено</span>
+                    <span>{f.columns.filter(c => !f.mapping[c] || f.mapping[c] === '__skip').length} пропущено</span>
                   </div>
                 </div>
               ))}
