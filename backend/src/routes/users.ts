@@ -1,4 +1,4 @@
-// @ts-nocheck — user-facing route, schema adaptation in progress
+// @ts-nocheck — ported from HideYou, runtime-compatible, type adaptation TODO
 import type { FastifyInstance } from 'fastify'
 import QRCode    from 'qrcode'
 import { z }     from 'zod'
@@ -200,7 +200,7 @@ export async function userRoutes(app: FastifyInstance) {
         },
         bonusHistory: {
           orderBy: { appliedAt: 'desc' },
-          include: { triggeredByPayment: { select: { confirmedAt: true } } },
+          include: { triggeredByPayment: { select: { paidAt: true } } },
         },
       },
     })
@@ -547,7 +547,7 @@ export async function userRoutes(app: FastifyInstance) {
         currency: 'RUB',
         status: 'PAID',
         purpose: 'SUBSCRIPTION',
-        confirmedAt: new Date(),
+        paidAt: new Date(),
         yukassaStatus: JSON.stringify({ _type: 'referral_redeem', days }),
       },
     })
@@ -620,7 +620,7 @@ export async function userRoutes(app: FastifyInstance) {
       data: {
         userId, tariffId,
         provider: 'MANUAL', amount: 0, currency: 'RUB',
-        status: 'PAID', purpose: 'SUBSCRIPTION', confirmedAt: new Date(),
+        status: 'PAID', purpose: 'SUBSCRIPTION', paidAt: new Date(),
         yukassaStatus: JSON.stringify({ _type: 'bonus_redeem', days }),
       },
     })
@@ -685,7 +685,7 @@ export async function userRoutes(app: FastifyInstance) {
           currency: 'RUB',
           status: 'PAID',
           purpose: 'SUBSCRIPTION',
-          confirmedAt: new Date(),
+          paidAt: new Date(),
           yukassaStatus: JSON.stringify({ _type: 'trial', days: trialDays }),
         },
     })

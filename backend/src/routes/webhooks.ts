@@ -1,4 +1,4 @@
-// @ts-nocheck — user-facing route, schema adaptation in progress
+// @ts-nocheck — ported from HideYou, runtime-compatible, type adaptation TODO
 import type { FastifyInstance } from 'fastify'
 import { paymentService } from '../services/payment'
 import { logger }         from '../utils/logger'

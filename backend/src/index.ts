@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import { registerPlugins } from './plugins'
 import { registerRoutes }  from './routes'
+import { setupCronJobs }   from './utils/scheduler'
 import { logger }          from './utils/logger'
 import { config }          from './config'
 
@@ -24,6 +25,7 @@ async function bootstrap() {
     await app.listen({ port: config.port, host: '0.0.0.0' })
     logger.info(`HIDEYOU PRO API running on port ${config.port}`)
     logger.info(`Environment: ${config.nodeEnv}`)
+    await setupCronJobs()
   } catch (err) {
     logger.error('Failed to start server:', err)
     process.exit(1)

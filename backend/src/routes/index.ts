@@ -29,6 +29,8 @@ import { notificationRoutes, adminNotificationRoutes } from './notifications'
 import { proxyRoutes, adminProxyRoutes }             from './proxies'
 import { instructionRoutes, adminInstructionRoutes } from './instructions'
 import { uploadRoutes }           from './upload'
+import { adminExtrasRoutes }     from './admin-extras'
+import { tmaAuthRoute }         from './tma-auth'
 
 export async function registerRoutes(app: FastifyInstance) {
   app.get('/health', async () => ({
@@ -40,6 +42,7 @@ export async function registerRoutes(app: FastifyInstance) {
 
   // Auth
   await app.register(authRoutes, { prefix: '/api/auth' })
+  await app.register(tmaAuthRoute, { prefix: '/api/auth' })
   await app.register(setupRoutes, { prefix: '/api/setup' })
 
   // Public
@@ -88,6 +91,7 @@ export async function registerRoutes(app: FastifyInstance) {
   // Analytics & Reports
   await app.register(adminAnalyticsRoutes,   { prefix: '/api/admin/analytics' })
   await app.register(adminReportRoutes,      { prefix: '/api/admin/reports' })
+  await app.register(adminExtrasRoutes,     { prefix: '/api/admin/extras' })
 
   // Uploads
   app.register(import('@fastify/static'), { root: '/app/uploads', prefix: '/uploads/', decorateReply: false })

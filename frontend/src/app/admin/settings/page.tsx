@@ -32,6 +32,7 @@ export default function SettingsPage() {
   const TABS = [
     { id: 'general',  icon: Settings,       label: 'Основные' },
     { id: 'vpn',      icon: Shield,         label: 'VPN' },
+    { id: 'notifications', icon: Bell,      label: 'Уведомления' },
     { id: 'telegram', icon: MessageCircle,  label: 'Telegram' },
     { id: 'payments', icon: CreditCard,     label: 'Платежи' },
     { id: 'email',    icon: Mail,           label: 'Email' },
@@ -125,6 +126,16 @@ export default function SettingsPage() {
                 <h3 className="text-sm font-medium">Реферальная программа</h3>
                 <div><label className="text-xs text-gray-500 mb-1 block">Бонусные дни за реферала</label><input type="number" value={settings.referral_bonus_days || '30'} onChange={e => upd('referral_bonus_days', e.target.value)} className="input" /></div>
                 <div><label className="text-xs text-gray-500 mb-1 block">Мин. дней подписки для бонуса</label><input type="number" value={settings.referral_min_days || '30'} onChange={e => upd('referral_min_days', e.target.value)} className="input" /></div>
+              </>
+            )}
+
+            {tab === 'notifications' && (
+              <>
+                <h3 className="text-sm font-medium">Telegram-каналы уведомлений</h3>
+                <p className="text-xs text-gray-400 mb-3">Отправляйте уведомления о событиях (доходы, расходы, оплаты, серверы) в Telegram-каналы или группы.</p>
+                <div className="p-3 rounded-lg bg-gray-50 text-xs text-gray-400">
+                  Управление каналами: API /api/admin/extras/notification-channels
+                </div>
               </>
             )}
           </div>

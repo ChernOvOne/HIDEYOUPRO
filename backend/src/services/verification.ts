@@ -1,4 +1,4 @@
-// @ts-nocheck — user-facing route, schema adaptation in progress
+// @ts-nocheck — ported from HideYou, runtime-compatible, type adaptation TODO
 import { prisma }       from '../db'
 import { config }       from '../config'
 import { emailService } from './email'

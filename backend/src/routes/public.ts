@@ -1,4 +1,4 @@
-// @ts-nocheck — user-facing route, schema adaptation in progress
+// @ts-nocheck — ported from HideYou, runtime-compatible, type adaptation TODO
 import type { FastifyInstance } from 'fastify'
 import { prisma }  from '../db'
 import { config }  from '../config'
@@ -13,7 +13,7 @@ export async function publicRoutes(app: FastifyInstance) {
         id: true, name: true, description: true,
         countries: true, protocol: true, speed: true,
         durationDays: true, priceRub: true, priceUsdt: true,
-        deviceLimit: true, trafficGb: true, isFeatured: true,
+        deviceLimit: true, trafficGb: true, isVisible: true,
         mode: true, variants: true, configurator: true,
       },
     }),
@@ -73,10 +73,10 @@ export async function publicRoutes(app: FastifyInstance) {
     return prisma.news.findMany({
       where: {
         isActive:    true,
-        publishedAt: { lte: new Date() },
+        publishAt: { lte: new Date() },
         OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
-      orderBy: [{ isPinned: 'desc' }, { publishedAt: 'desc' }],
+      orderBy: [{ publishAt: 'desc' }],
       take: Number(limit),
     })
   })

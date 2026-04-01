@@ -1,4 +1,4 @@
-// @ts-nocheck — user-facing route, schema adaptation in progress
+// @ts-nocheck — ported from HideYou, runtime-compatible, type adaptation TODO
 import type { FastifyInstance } from 'fastify'
 import { z }            from 'zod'
 import { giftService }  from '../services/gift'
@@ -46,20 +46,20 @@ export async function giftRoutes(app: FastifyInstance) {
           currency:    'RUB',
           status:      'PAID',
           purpose:     'GIFT',
-          confirmedAt: new Date(),
+          paidAt: new Date(),
         },
       })
 
       // Create gift
       const gift = await giftService.createGift({
-        fromUserId:     userId,
+        senderId:     userId,
         tariffId:       tariff.id,
         paymentId:      payment.id,
         recipientEmail: data.recipientEmail,
         message:        data.message,
       })
 
-      return { ok: true, giftCode: gift.giftCode, giftUrl: `${process.env.APP_URL || ''}/present/${gift.giftCode}` }
+      return { ok: true, giftCode: gift.code, giftUrl: `${process.env.APP_URL || ''}/present/${gift.code}` }
     }
 
     // For YUKASSA/CRYPTOPAY, create payment with purpose=GIFT
@@ -82,10 +82,10 @@ export async function giftRoutes(app: FastifyInstance) {
 
     // Store gift metadata in description for use after payment confirmation
     await prisma.payment.update({
-      where: { id: result.orderId },
+      where: { id: result.paymentId },
       data:  {
         // JSON with gift details — parsed in confirmPayment
-        yukassaStatus: JSON.stringify({
+        metadata: JSON.stringify({
           _giftMeta: true,
           recipientEmail: data.recipientEmail || null,
           message: data.message || null,
@@ -94,7 +94,7 @@ export async function giftRoutes(app: FastifyInstance) {
     })
 
     return {
-      orderId:    result.orderId,
+      orderId:    result.paymentId,
       paymentUrl: result.paymentUrl,
       provider:   result.provider,
     }
@@ -117,7 +117,7 @@ export async function giftRoutes(app: FastifyInstance) {
       tariffName: gift.tariff.name,
       message:    gift.message,
       expiresAt:  gift.expiresAt,
-      senderName: gift.fromUser?.telegramName || gift.fromUser?.email || null,
+      senderName: gift?.sender?.telegramName || gift?.sender?.email || null,
     }
   })
 
