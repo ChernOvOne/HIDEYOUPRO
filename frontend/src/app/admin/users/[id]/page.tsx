@@ -6,49 +6,84 @@ import {
   ArrowLeft, Shield, Plus, CreditCard, Users, Mail, MessageCircle,
   Copy, CheckCircle2, Clock, Trash2, Bell, RefreshCw, Ban,
   Calendar, Globe, FileText, DollarSign, ChevronDown, Wallet,
-  Tag, Star, Loader2, KeyRound,
+  Tag, Star, Loader2, KeyRound, Smartphone, Wifi, Filter,
+  ChevronRight,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { adminApi } from '@/lib/api'
 
+function fmtBytes(b: number) {
+  if (!b) return '0 Б'
+  const k = 1024, s = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ']
+  const i = Math.floor(Math.log(b) / Math.log(k))
+  return `${(b / Math.pow(k, i)).toFixed(1)} ${s[i]}`
+}
+
+function formatTraffic(used: number, limit: number): string {
+  const usedGb = (used / (1024 * 1024 * 1024)).toFixed(1)
+  if (!limit || limit === 0) return `${usedGb} ГБ / Безлимит`
+  const limitGb = (limit / (1024 * 1024 * 1024)).toFixed(0)
+  return `${usedGb} / ${limitGb} ГБ`
+}
+
 export default function UserDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
-  const [user, setUser]       = useState<any>(null)
+  const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [acting, setActing]   = useState(false)
-  const [copied, setCopied]   = useState<string | null>(null)
+  const [acting, setActing] = useState(false)
+  const [copied, setCopied] = useState<string | null>(null)
 
   // Modals
-  const [showExtend, setShowExtend]       = useState(false)
-  const [showNote, setShowNote]           = useState(false)
-  const [showBalance, setShowBalance]     = useState(false)
+  const [showExtend, setShowExtend] = useState(false)
+  const [showNote, setShowNote] = useState(false)
+  const [showBalance, setShowBalance] = useState(false)
   const [showGrantDays, setShowGrantDays] = useState(false)
-  const [showDelete, setShowDelete]       = useState(false)
-  const [showResetPw, setShowResetPw]     = useState(false)
-  const [showEditRole, setShowEditRole]   = useState(false)
-
-  // Form state
-  const [extendDays, setExtendDays]       = useState(30)
-  const [noteText, setNoteText]           = useState('')
-  const [balanceAmount, setBalanceAmount] = useState(0)
-  const [balanceDesc, setBalanceDesc]     = useState('')
-  const [grantDaysCount, setGrantDaysCount] = useState(30)
-  const [grantDaysDesc, setGrantDaysDesc] = useState('')
-  const [newPassword, setNewPassword]     = useState('')
-  const [newRole, setNewRole]             = useState('')
+  const [showDelete, setShowDelete] = useState(false)
+  const [showResetPw, setShowResetPw] = useState(false)
+  const [showEditRole, setShowEditRole] = useState(false)
+  const [showNotify, setShowNotify] = useState(false)
 
   // Collapsible sections
-  const [paymentsOpen, setPaymentsOpen]       = useState(true)
-  const [referralsOpen, setReferralsOpen]     = useState(false)
-  const [notesOpen, setNotesOpen]             = useState(true)
-  const [variablesOpen, setVariablesOpen]     = useState(false)
-  const [balanceTxOpen, setBalanceTxOpen]     = useState(false)
+  const [devicesOpen, setDevicesOpen] = useState(false)
+  const [referralsOpen, setReferralsOpen] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(true)
+  const [variablesOpen, setVariablesOpen] = useState(false)
+
+  // Activity
+  const [activityFilter, setActivityFilter] = useState<string>('all')
+  const [activities, setActivities] = useState<any[]>([])
+  const [activitiesLoading, setActivitiesLoading] = useState(false)
+
+  // Form state
+  const [extendDays, setExtendDays] = useState(30)
+  const [noteText, setNoteText] = useState('')
+  const [balanceAmount, setBalanceAmount] = useState(0)
+  const [balanceDesc, setBalanceDesc] = useState('')
+  const [grantDaysCount, setGrantDaysCount] = useState(30)
+  const [grantDaysDesc, setGrantDaysDesc] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [newRole, setNewRole] = useState('')
+  const [notifyTitle, setNotifyTitle] = useState('')
+  const [notifyMsg, setNotifyMsg] = useState('')
+
+  const loadActivities = async () => {
+    setActivitiesLoading(true)
+    try {
+      const data = await adminApi.get(`/users/${id}/activity?limit=50`)
+      setActivities(data.items || data.activities || [])
+    } catch {
+      // Activity endpoint may not exist yet
+    } finally {
+      setActivitiesLoading(false)
+    }
+  }
 
   const load = async () => {
     try {
       const u = await adminApi.get(`/users/${id}`)
       setUser(u)
+      loadActivities()
     } catch {
       toast.error('Ошибка загрузки')
     } finally {
@@ -96,6 +131,10 @@ export default function UserDetailPage() {
     ? Math.max(0, Math.ceil((new Date(user.subExpireAt).getTime() - Date.now()) / 86400_000))
     : null
 
+  const rmData = user.rmData || null
+  const devices = rmData?.devices || user.devices || []
+  const geoInfo = user.geoInfo || null
+
   const statusColor: Record<string, string> = {
     ACTIVE: 'text-emerald-600 bg-emerald-50',
     INACTIVE: 'text-gray-500 bg-gray-100',
@@ -130,6 +169,134 @@ export default function UserDetailPage() {
     </button>
   )
 
+  // ── Build unified activity list ──
+  const buildActivityItems = () => {
+    const allItems: any[] = []
+
+    // Parse payments into activity items
+    if (user.payments?.length) {
+      for (const p of user.payments) {
+        let meta: any = null
+        try { meta = JSON.parse(p.yukassaStatus || p.metadata || '{}') } catch {}
+
+        if (meta?._type === 'referral_redeem') {
+          allItems.push({
+            id: p.id, type: 'referral_redeem',
+            description: 'Активация реферальных дней',
+            value: `+${meta.days} дней`,
+            date: p.createdAt, status: p.status, meta,
+          })
+        } else if (meta?._type === 'bonus_redeem') {
+          allItems.push({
+            id: p.id, type: 'bonus_redeem',
+            description: 'Активация бонусных дней',
+            value: `+${meta.days} дней`,
+            date: p.createdAt, status: p.status, meta,
+          })
+        } else {
+          const modeLabel = meta?._mode === 'variant' ? meta.variantName || meta.tariffName || ''
+            : meta?._mode === 'configurator' ? `${meta.days || ''}д / ${meta.devices || ''}устр`
+            : ''
+          const promoLabel = meta?.promoCode ? ` (промо: ${meta.promoCode}${meta.discountPct ? ` -${meta.discountPct}%` : ''})` : ''
+
+          allItems.push({
+            id: p.id, type: 'payment',
+            description: [p.provider, modeLabel, p.purpose === 'GIFT' ? 'Подарок' : '', promoLabel].filter(Boolean).join(' · '),
+            value: (() => {
+              if (p.purpose === 'GIFT' && p.amount === 0) return 'Подарок'
+              if (p.amount === 0 && p.provider === 'MANUAL') return 'Бонус'
+              const amt = p.currency === 'RUB' ? `${Number(p.amount).toLocaleString('ru')} \u20BD` : `${p.amount} ${p.currency}`
+              return amt
+            })(),
+            originalAmount: meta?.originalAmount ?? null,
+            amount: p.amount, currency: p.currency,
+            date: p.createdAt, status: p.status, meta,
+          })
+        }
+      }
+    }
+
+    // Balance transactions
+    if (user.balanceTransactions?.length) {
+      for (const tx of user.balanceTransactions) {
+        allItems.push({
+          id: tx.id, type: 'balance',
+          description: tx.description || tx.type || 'Транзакция',
+          value: `${Number(tx.amount) >= 0 ? '+' : ''}${Number(tx.amount)} \u20BD`,
+          amount: Number(tx.amount),
+          date: tx.createdAt, status: 'completed', meta: null,
+        })
+      }
+    }
+
+    // Bonus history
+    if (user.bonusHistory?.length) {
+      for (const b of user.bonusHistory) {
+        allItems.push({
+          id: b.id, type: 'bonus_redeem',
+          description: b.reason || 'Бонусные дни',
+          value: `+${b.days} дн.`,
+          date: b.appliedAt || b.createdAt, status: 'completed', meta: null,
+        })
+      }
+    }
+
+    // Merge in activities from API
+    for (const a of activities) {
+      if (a.type === 'payment' && allItems.some(i => i.id === a.id)) continue
+      allItems.push({
+        id: a.id, type: a.type,
+        description: a.description,
+        value: a.amount != null
+          ? (a.currency === 'RUB' ? `${a.amount > 0 ? '+' : ''}${a.amount} \u20BD` : `${a.amount} ${a.currency || ''}`)
+          : '',
+        amount: a.amount,
+        date: a.date, status: a.status, meta: a.metadata,
+      })
+    }
+
+    allItems.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    return allItems
+  }
+
+  const allActivityItems = buildActivityItems()
+  const filteredActivity = activityFilter === 'all'
+    ? allActivityItems
+    : allActivityItems.filter(i => i.type === activityFilter)
+
+  const typeConfig: Record<string, { icon: React.ReactNode; dotBg: string; dotText: string; badgeBg: string; badgeText: string; badgeLabel: string; valueColor: string }> = {
+    payment: {
+      icon: <CreditCard className="w-4 h-4" />,
+      dotBg: 'bg-emerald-100', dotText: 'text-emerald-600',
+      badgeBg: 'bg-emerald-50', badgeText: 'text-emerald-600', badgeLabel: 'Платёж',
+      valueColor: 'text-emerald-600',
+    },
+    bonus_redeem: {
+      icon: <Star className="w-4 h-4" />,
+      dotBg: 'bg-violet-100', dotText: 'text-violet-600',
+      badgeBg: 'bg-violet-50', badgeText: 'text-violet-600', badgeLabel: 'Бонус',
+      valueColor: 'text-violet-600',
+    },
+    referral_redeem: {
+      icon: <Users className="w-4 h-4" />,
+      dotBg: 'bg-cyan-100', dotText: 'text-cyan-600',
+      badgeBg: 'bg-cyan-50', badgeText: 'text-cyan-600', badgeLabel: 'Реферал',
+      valueColor: 'text-cyan-600',
+    },
+    promo: {
+      icon: <Tag className="w-4 h-4" />,
+      dotBg: 'bg-amber-100', dotText: 'text-amber-600',
+      badgeBg: 'bg-amber-50', badgeText: 'text-amber-600', badgeLabel: 'Промокод',
+      valueColor: 'text-amber-600',
+    },
+    balance: {
+      icon: <Wallet className="w-4 h-4" />,
+      dotBg: 'bg-blue-100', dotText: 'text-blue-600',
+      badgeBg: 'bg-blue-50', badgeText: 'text-blue-600', badgeLabel: 'Баланс',
+      valueColor: 'text-blue-600',
+    },
+  }
+
   return (
     <>
       <div className="page-header">
@@ -152,6 +319,17 @@ export default function UserDetailPage() {
         <div className="flex flex-wrap gap-2 mb-5">
           <button onClick={() => setShowExtend(true)} className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5">
             <Plus className="w-3.5 h-3.5" /> Добавить дни
+          </button>
+          <button onClick={() => action(() => adminApi.post(`/users/${id}/revoke`), 'Ссылка подписки обновлена')}
+            className="btn-default text-xs py-2 px-3 flex items-center gap-1.5" disabled={acting}>
+            <RefreshCw className="w-3.5 h-3.5" /> Обновить ссылку
+          </button>
+          <button onClick={() => action(() => adminApi.post(`/users/${id}/reset-traffic`), 'Трафик сброшен')}
+            className="btn-default text-xs py-2 px-3 flex items-center gap-1.5" disabled={acting}>
+            <RefreshCw className="w-3.5 h-3.5" /> Сброс трафика
+          </button>
+          <button onClick={() => setShowNotify(true)} className="btn-default text-xs py-2 px-3 flex items-center gap-1.5">
+            <Bell className="w-3.5 h-3.5" /> Уведомление
           </button>
           <button onClick={() => setShowNote(true)} className="btn-default text-xs py-2 px-3 flex items-center gap-1.5">
             <FileText className="w-3.5 h-3.5" /> Заметка
@@ -209,19 +387,55 @@ export default function UserDetailPage() {
               </div>
 
               <div className="space-y-0.5 border-t border-gray-100 pt-3">
+                {rmData?.username && <CopyField label="RW Username" value={rmData.username} />}
                 {user.email && <CopyField label="Email" value={user.email} />}
                 {user.telegramId && <CopyField label="Telegram ID" value={user.telegramId} />}
                 {user.telegramName && <CopyField label="TG имя" value={`@${user.telegramName}`} />}
                 {user.referralCode && <CopyField label="Реф. код" value={user.referralCode} />}
                 {user.remnawaveUuid && <CopyField label="RW UUID" value={user.remnawaveUuid} />}
                 <CopyField label="ID" value={user.id} />
+                {rmData?.subscriptionUrl && <CopyField label="Ссылка подписки" value={rmData.subscriptionUrl} />}
               </div>
 
               <div className="space-y-1.5 border-t border-gray-100 pt-3 mt-3 text-xs text-gray-400">
                 <p>Регистрация: {new Date(user.createdAt).toLocaleString('ru')}</p>
                 {user.lastLoginAt && <p>Последний вход: {new Date(user.lastLoginAt).toLocaleString('ru')}</p>}
+                {rmData?.firstConnectedAt && <p>Первое подключение: {new Date(rmData.firstConnectedAt).toLocaleString('ru')}</p>}
+                {rmData?.onlineAt && <p>Онлайн: {new Date(rmData.onlineAt).toLocaleString('ru')}</p>}
+                {rmData?.subLastOpenedAt && <p>Последнее открытие подписки: {new Date(rmData.subLastOpenedAt).toLocaleString('ru')}</p>}
+                {rmData?.subLastUserAgent && <p>Приложение: {rmData.subLastUserAgent}</p>}
                 {user.utmCode && <p>UTM: {user.utmCode}</p>}
               </div>
+
+              {/* IP & Geo info */}
+              {(user.lastIp || geoInfo) && (
+                <div className="space-y-2 border-t border-gray-100 pt-3 mt-3">
+                  <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">Последний IP</p>
+                  {user.lastIp && <CopyField label="IP адрес" value={user.lastIp} />}
+                  {geoInfo && (
+                    <div className="space-y-1.5 text-xs text-gray-400">
+                      {geoInfo.country && (
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>{geoInfo.country}{geoInfo.city ? `, ${geoInfo.city}` : ''}</span>
+                        </div>
+                      )}
+                      {geoInfo.region && geoInfo.region !== geoInfo.city && (
+                        <div className="flex items-center gap-2">
+                          <span className="w-3.5" />
+                          <span>{geoInfo.region}</span>
+                        </div>
+                      )}
+                      {geoInfo.isp && (
+                        <div className="flex items-center gap-2">
+                          <Wifi className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>{geoInfo.isp}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* KPI stats */}
@@ -244,16 +458,20 @@ export default function UserDetailPage() {
               </div>
             </div>
 
-            {/* Subscription card */}
+            {/* REMNAWAVE Subscription card */}
             <div className="bg-white rounded-xl border border-gray-100 p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Globe className="w-4 h-4 text-primary-600" /> Подписка
+                <Globe className="w-4 h-4 text-primary-600" /> Подписка REMNAWAVE
               </h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Статус</span>
-                  <span className={`font-medium ${user.subStatus === 'ACTIVE' ? 'text-emerald-600' : user.subStatus === 'EXPIRED' ? 'text-red-500' : 'text-gray-500'}`}>
-                    {user.subStatus}
+                  <span className={`font-medium ${
+                    (rmData?.status || user.subStatus) === 'ACTIVE' ? 'text-emerald-600'
+                    : (rmData?.status || user.subStatus) === 'EXPIRED' ? 'text-red-500'
+                    : 'text-gray-500'
+                  }`}>
+                    {rmData?.status || user.subStatus}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -269,6 +487,59 @@ export default function UserDetailPage() {
                       {daysLeft}
                     </span>
                   </div>
+                )}
+                {rmData && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Трафик</span>
+                      <span className="text-gray-900 font-medium">
+                        {formatTraffic(rmData.usedTrafficBytes, rmData.trafficLimitBytes)}
+                      </span>
+                    </div>
+                    {/* Traffic progress bar */}
+                    {rmData.trafficLimitBytes > 0 && (
+                      <div className="w-full h-2 rounded-full overflow-hidden bg-gray-100">
+                        <div className="h-full rounded-full bg-primary-600 transition-all"
+                          style={{ width: `${Math.min(100, Math.round(rmData.usedTrafficBytes / rmData.trafficLimitBytes * 100))}%` }} />
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Лимит устройств</span>
+                      <span className="text-gray-900 font-medium">
+                        {rmData.hwidDeviceLimit === 0 ? 'Безлимит' : String(rmData.hwidDeviceLimit ?? '--')}
+                      </span>
+                    </div>
+                    {rmData.tag && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Тег</span>
+                        <span className="text-gray-900 font-medium">{rmData.tag}</span>
+                      </div>
+                    )}
+                    {rmData.onlineAt && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Онлайн</span>
+                        <span className="text-gray-900 text-xs">{new Date(rmData.onlineAt).toLocaleString('ru')}</span>
+                      </div>
+                    )}
+                    {rmData.firstConnectedAt && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Первое подключение</span>
+                        <span className="text-gray-900 text-xs">{new Date(rmData.firstConnectedAt).toLocaleString('ru')}</span>
+                      </div>
+                    )}
+                    {rmData.subLastOpenedAt && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Последнее открытие</span>
+                        <span className="text-gray-900 text-xs">{new Date(rmData.subLastOpenedAt).toLocaleString('ru')}</span>
+                      </div>
+                    )}
+                    {rmData.subLastUserAgent && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">User Agent</span>
+                        <span className="text-gray-900 text-xs truncate max-w-[180px]">{rmData.subLastUserAgent}</span>
+                      </div>
+                    )}
+                  </>
                 )}
                 <div className="flex justify-between">
                   <span className="text-gray-500">Платежи</span>
@@ -312,108 +583,168 @@ export default function UserDetailPage() {
 
           {/* ---- Right column: details ---- */}
           <div className="lg:col-span-2 space-y-5">
-            {/* Payments */}
+
+            {/* Devices (collapsible) */}
             <div className="bg-white rounded-xl border border-gray-100 p-5">
               <SectionHeader
-                icon={<CreditCard className="w-4 h-4 text-primary-600" />}
-                title="История платежей"
-                count={user.payments?.length}
-                open={paymentsOpen}
-                toggle={() => setPaymentsOpen(!paymentsOpen)}
+                icon={<Smartphone className="w-4 h-4 text-primary-600" />}
+                title="Устройства"
+                count={devices.length}
+                open={devicesOpen}
+                toggle={() => setDevicesOpen(!devicesOpen)}
               />
-              {paymentsOpen && (
-                <div className="mt-3">
-                  {!user.payments?.length ? (
-                    <p className="text-sm text-gray-400 py-4 text-center">Нет платежей</p>
+              {devicesOpen && (
+                <div className="mt-3 space-y-2">
+                  {devices.length === 0 ? (
+                    <p className="text-sm text-gray-400 py-4 text-center">Нет подключённых устройств</p>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-gray-100">
-                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Сумма</th>
-                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Провайдер</th>
-                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Статус</th>
-                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Назначение</th>
-                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2">Дата</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {user.payments.map((p: any) => (
-                            <tr key={p.id} className="border-b border-gray-50 last:border-0">
-                              <td className="py-2.5 pr-4 font-medium text-gray-900">
-                                {Number(p.amount).toLocaleString('ru')} {p.currency || '&#8381;'}
-                              </td>
-                              <td className="py-2.5 pr-4 text-gray-500">{p.provider || '--'}</td>
-                              <td className="py-2.5 pr-4">
-                                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                                  p.status === 'PAID' ? 'text-emerald-600 bg-emerald-50' :
-                                  p.status === 'PENDING' ? 'text-amber-600 bg-amber-50' :
-                                  'text-gray-500 bg-gray-100'
-                                }`}>{p.status}</span>
-                              </td>
-                              <td className="py-2.5 pr-4 text-gray-500">{p.purpose || '--'}</td>
-                              <td className="py-2.5 text-gray-400 text-xs">{new Date(p.createdAt).toLocaleDateString('ru')}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    devices.map((d: any) => (
+                      <div key={d.hwid || d.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
+                        {/* Platform icon */}
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-primary-50">
+                          {d.platform === 'iOS' ? <Smartphone className="w-5 h-5 text-primary-600" /> :
+                           d.platform === 'Android' ? <Smartphone className="w-5 h-5 text-emerald-600" /> :
+                           <Globe className="w-5 h-5 text-primary-600" />}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-gray-900">
+                            {d.deviceModel || d.platform || 'Неизвестное устройство'}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {[d.platform, d.osVersion ? `v${d.osVersion}` : null].filter(Boolean).join(' ')}
+                            {d.userAgent && (() => {
+                              const parts = d.userAgent.split('/')
+                              const appName = parts[0] || ''
+                              const appVersion = parts[1] || ''
+                              return <span className="text-gray-400"> · {appName} {appVersion}</span>
+                            })()}
+                          </p>
+                          <p className="text-[10px] font-mono text-gray-400 mt-0.5 truncate">
+                            HWID: {d.hwid}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                          <span className="text-[10px] text-gray-400">
+                            {d.createdAt ? new Date(d.createdAt).toLocaleDateString('ru') : ''}
+                          </span>
+                          <button
+                            onClick={() => action(
+                              () => adminApi.delete(`/users/${id}/devices/${d.hwid}`),
+                              'Устройство удалено'
+                            )}
+                            className="p-2 rounded-lg hover:bg-red-50 transition-colors"
+                            title="Удалить устройство">
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </button>
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               )}
             </div>
 
-            {/* Balance transactions */}
-            {user.balanceTransactions?.length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-100 p-5">
-                <SectionHeader
-                  icon={<Wallet className="w-4 h-4 text-primary-600" />}
-                  title="История баланса"
-                  count={user.balanceTransactions.length}
-                  open={balanceTxOpen}
-                  toggle={() => setBalanceTxOpen(!balanceTxOpen)}
-                />
-                {balanceTxOpen && (
-                  <div className="mt-3 space-y-1">
-                    {user.balanceTransactions.map((tx: any) => (
-                      <div key={tx.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                        <div>
-                          <p className="text-sm text-gray-900">{tx.description || tx.type || 'Транзакция'}</p>
-                          <p className="text-xs text-gray-400">{new Date(tx.createdAt).toLocaleString('ru')}</p>
-                        </div>
-                        <span className={`text-sm font-medium ${Number(tx.amount) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                          {Number(tx.amount) >= 0 ? '+' : ''}{Number(tx.amount)} &#8381;
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Unified Activity Timeline */}
+            <div className="bg-white rounded-xl border border-gray-100 p-5">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-primary-600" /> История активности
+              </h3>
 
-            {/* Bonus history */}
-            {user.bonusHistory?.length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-100 p-5">
-                <SectionHeader
-                  icon={<Star className="w-4 h-4 text-primary-600" />}
-                  title="История бонусов"
-                  count={user.bonusHistory.length}
-                  open={false}
-                  toggle={() => {}}
-                />
-                <div className="mt-3 space-y-1">
-                  {user.bonusHistory.map((b: any) => (
-                    <div key={b.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                      <div>
-                        <p className="text-sm text-gray-900">{b.reason || 'Бонус'}</p>
-                        <p className="text-xs text-gray-400">{new Date(b.appliedAt).toLocaleString('ru')}</p>
-                      </div>
-                      <span className="text-sm font-medium text-primary-600">+{b.days} дн.</span>
-                    </div>
-                  ))}
-                </div>
+              {/* Filter tabs */}
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {([
+                  { key: 'all', label: 'Все' },
+                  { key: 'payment', label: 'Платежи' },
+                  { key: 'bonus_redeem', label: 'Бонусные дни' },
+                  { key: 'referral_redeem', label: 'Реферальные дни' },
+                  { key: 'promo', label: 'Промокоды' },
+                  { key: 'balance', label: 'Баланс' },
+                ] as const).map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActivityFilter(tab.key)}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors border ${
+                      activityFilter === tab.key
+                        ? 'bg-primary-600 text-white border-primary-600'
+                        : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
-            )}
+
+              {/* Timeline */}
+              {filteredActivity.length === 0 ? (
+                <p className="text-sm text-gray-400 py-6 text-center">
+                  {activitiesLoading ? 'Загрузка...' : 'Нет записей'}
+                </p>
+              ) : (
+                <div className="space-y-0">
+                  {filteredActivity.map((item, idx) => {
+                    const cfg = typeConfig[item.type] || typeConfig.payment
+                    const isLast = idx === filteredActivity.length - 1
+
+                    return (
+                      <div key={item.id + '-' + idx} className="flex gap-3 relative">
+                        {/* Timeline line + dot */}
+                        <div className="flex flex-col items-center flex-shrink-0" style={{ width: 32 }}>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${cfg.dotBg} ${cfg.dotText}`}>
+                            {cfg.icon}
+                          </div>
+                          {!isLast && (
+                            <div className="flex-1 w-px my-1 bg-gray-200" />
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 pb-4">
+                          <div className="flex items-start justify-between gap-2 flex-wrap">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-medium text-gray-900">
+                                  {item.description}
+                                </p>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${cfg.badgeBg} ${cfg.badgeText}`}>
+                                  {cfg.badgeLabel}
+                                </span>
+                                {item.status && item.status !== 'PAID' && item.status !== 'completed' && (
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                                    item.status === 'PENDING' ? 'bg-amber-50 text-amber-600' : 'bg-red-50 text-red-500'
+                                  }`}>
+                                    {item.status}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                {new Date(item.date).toLocaleString('ru')}
+                              </p>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className={`text-sm font-semibold ${cfg.valueColor}`}>
+                                {item.value}
+                              </p>
+                              {item.originalAmount != null && item.originalAmount !== item.amount && (
+                                <p className="text-[10px] line-through text-gray-400">
+                                  {item.currency === 'RUB' ? `${Number(item.originalAmount).toLocaleString('ru')} \u20BD` : `${item.originalAmount}`}
+                                </p>
+                              )}
+                              {item.meta?.promoCode && (
+                                <p className="text-[10px] mt-0.5 text-violet-600">
+                                  {item.meta.promoCode}{item.meta.discountPct ? ` -${item.meta.discountPct}%` : ''}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Admin Notes */}
             <div className="bg-white rounded-xl border border-gray-100 p-5">
@@ -433,9 +764,9 @@ export default function UserDetailPage() {
                       {user.adminNotesOnUser.map((note: any) => (
                         <div key={note.id} className="flex items-start justify-between p-3 rounded-lg bg-gray-50">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm text-gray-900">{note.note}</p>
+                            <p className="text-sm text-gray-900">{note.note || note.text}</p>
                             <p className="text-xs text-gray-400 mt-1">
-                              {note.author?.telegramName || 'Админ'} &middot; {new Date(note.createdAt).toLocaleString('ru')}
+                              {note.author?.telegramName || note.admin?.telegramName || 'Админ'} &middot; {new Date(note.createdAt).toLocaleString('ru')}
                             </p>
                           </div>
                         </div>
@@ -454,7 +785,7 @@ export default function UserDetailPage() {
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {user.userTags.map((t: any) => (
-                    <span key={t.id} className="badge-info flex items-center gap-1">
+                    <span key={t.id} className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-50 text-primary-600 flex items-center gap-1">
                       <Tag className="w-3 h-3" />{t.tag}
                     </span>
                   ))}
@@ -510,6 +841,22 @@ export default function UserDetailPage() {
             setShowExtend(false)
           }} className="btn-primary w-full justify-center" disabled={acting}>
             +{extendDays} дн.
+          </button>
+        </ModalOverlay>
+      )}
+
+      {/* Notify */}
+      {showNotify && (
+        <ModalOverlay onClose={() => setShowNotify(false)} title="Отправить уведомление">
+          <input className="input w-full" placeholder="Заголовок"
+            value={notifyTitle} onChange={e => setNotifyTitle(e.target.value)} />
+          <textarea className="input w-full min-h-[80px] resize-y" placeholder="Сообщение"
+            value={notifyMsg} onChange={e => setNotifyMsg(e.target.value)} />
+          <button onClick={() => {
+            action(() => adminApi.post(`/users/${id}/notify`, { title: notifyTitle, message: notifyMsg }), 'Уведомление отправлено')
+            setShowNotify(false); setNotifyTitle(''); setNotifyMsg('')
+          }} className="btn-primary w-full justify-center" disabled={acting || !notifyTitle || !notifyMsg}>
+            Отправить
           </button>
         </ModalOverlay>
       )}
@@ -617,19 +964,62 @@ export default function UserDetailPage() {
             Вы уверены, что хотите удалить <strong className="text-gray-900">{user.telegramName || user.email || user.id}</strong>?
             Это действие необратимо.
           </p>
-          <div className="flex gap-2">
-            <button onClick={() => setShowDelete(false)} className="btn-default flex-1 justify-center">
-              Отмена
+          <div className="space-y-2">
+            {/* Full delete */}
+            <button onClick={() => {
+              action(() => adminApi.delete(`/users/${id}`), 'Пользователь полностью удалён').then(() => router.push('/admin/users'))
+              setShowDelete(false)
+            }} className="w-full text-left p-3 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 transition-colors"
+              disabled={acting}>
+              <p className="text-sm font-medium text-red-600">Удалить полностью</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">Из БД + REMNAWAVE + бот. Необратимо.</p>
             </button>
+
+            {/* REMNAWAVE only */}
+            {user.remnawaveUuid && (
+              <button onClick={() => {
+                action(
+                  () => adminApi.post(`/users/${id}/delete-remnawave`),
+                  'Подписка REMNAWAVE удалена'
+                )
+                setShowDelete(false)
+              }} className="w-full text-left p-3 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors"
+                disabled={acting}>
+                <p className="text-sm font-medium text-amber-600">Только подписку REMNAWAVE</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">Удалит из VPN-панели, аккаунт в системе останется.</p>
+              </button>
+            )}
+
+            {/* Web account only */}
             <button onClick={() => {
               action(
-                () => adminApi.delete(`/users/${id}`),
-                'Пользователь удалён'
+                () => adminApi.post(`/users/${id}/delete-web`),
+                'Веб-аккаунт удалён'
               ).then(() => router.push('/admin/users'))
               setShowDelete(false)
-            }} className="flex-1 py-2 px-4 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors text-center"
+            }} className="w-full text-left p-3 rounded-lg border border-violet-200 bg-violet-50 hover:bg-violet-100 transition-colors"
               disabled={acting}>
-              Удалить
+              <p className="text-sm font-medium text-violet-600">Только из веб-системы</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">Удалит из БД, REMNAWAVE не затронет.</p>
+            </button>
+
+            {/* Remove from bot */}
+            {user.telegramId && (
+              <button onClick={() => {
+                action(
+                  () => adminApi.post(`/users/${id}/delete-bot`),
+                  'Пользователь удалён из бота'
+                )
+                setShowDelete(false)
+              }} className="w-full text-left p-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors"
+                disabled={acting}>
+                <p className="text-sm font-medium text-gray-700">Только из бота</p>
+                <p className="text-[11px] text-gray-500 mt-0.5">Удалит историю чата и отвяжет Telegram. Веб-аккаунт и подписка останутся.</p>
+              </button>
+            )}
+
+            <button onClick={() => setShowDelete(false)} className="btn-default w-full justify-center mt-1">
+              Отмена
             </button>
           </div>
         </ModalOverlay>

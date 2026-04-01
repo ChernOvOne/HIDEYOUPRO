@@ -82,7 +82,17 @@ export async function adminUserRoutes(app: FastifyInstance) {
         _count: { select: { referrals: true, payments: true } },
       },
     })
-    return user
+
+    // Enrich with REMNAWAVE data
+    let rmData = null
+    if (user.remnawaveUuid) {
+      try {
+        const { remnawave } = await import('../services/remnawave')
+        rmData = await remnawave.getUserByUuid(user.remnawaveUuid)
+      } catch {}
+    }
+
+    return { ...user, rmData }
   })
 
   // PUT /:id — update user
@@ -143,6 +153,77 @@ export async function adminUserRoutes(app: FastifyInstance) {
     const { id } = req.params
     await prisma.user.delete({ where: { id } })
     return { ok: true }
+  })
+
+  // POST /:id/revoke — refresh subscription URL
+  app.post<{ Params: { id: string } }>('/:id/revoke', admin, async (req) => {
+    const { id } = req.params
+    const user = await prisma.user.findUniqueOrThrow({ where: { id } })
+    if (user.remnawaveUuid) {
+      const { remnawave } = await import('../services/remnawave')
+      await remnawave.revokeSubscription(user.remnawaveUuid)
+    }
+    return { ok: true }
+  })
+
+  // POST /:id/reset-traffic — reset user traffic
+  app.post<{ Params: { id: string } }>('/:id/reset-traffic', admin, async (req) => {
+    const { id } = req.params
+    const user = await prisma.user.findUniqueOrThrow({ where: { id } })
+    if (user.remnawaveUuid) {
+      const { remnawave } = await import('../services/remnawave')
+      const cfg = await (remnawave as any).getConfig()
+      const axios = (await import('axios')).default
+      await axios.post(`/users/${user.remnawaveUuid}/reset-traffic`, {}, cfg)
+    }
+    return { ok: true }
+  })
+
+  // POST /:id/notify — send notification to user
+  app.post<{ Params: { id: string } }>('/:id/notify', admin, async (req) => {
+    const { id } = req.params
+    const body = z.object({ title: z.string(), message: z.string() }).parse(req.body)
+    const user = await prisma.user.findUniqueOrThrow({ where: { id } })
+    if (user.telegramId) {
+      const { bot } = await import('../bot/index')
+      const text = body.title ? `*${body.title}*\n\n${body.message}` : body.message
+      await bot.api.sendMessage(user.telegramId, text, { parse_mode: 'Markdown' })
+    }
+    return { ok: true }
+  })
+
+  // DELETE /:id/devices/:hwid — delete device
+  app.delete<{ Params: { id: string; hwid: string } }>('/:id/devices/:hwid', admin, async (req) => {
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.params.id } })
+    if (user.remnawaveUuid) {
+      const { remnawave } = await import('../services/remnawave')
+      await remnawave.deleteDevice(user.remnawaveUuid, req.params.hwid)
+    }
+    return { ok: true }
+  })
+
+  // GET /:id/activity — user activity history
+  app.get<{ Params: { id: string } }>('/:id/activity', admin, async (req) => {
+    const { id } = req.params
+    const [payments, balanceTx, bonuses] = await Promise.all([
+      prisma.payment.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 50 }),
+      prisma.balanceTransaction.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 50 }),
+      prisma.referralBonus.findMany({ where: { referrerId: id }, orderBy: { appliedAt: 'desc' }, take: 50 }),
+    ])
+
+    const items: any[] = []
+    for (const p of payments) {
+      items.push({ id: p.id, type: 'payment', description: `${p.provider} — ${p.purpose}`, amount: Number(p.amount), currency: p.currency, date: p.createdAt, status: p.status })
+    }
+    for (const t of balanceTx) {
+      items.push({ id: t.id, type: 'balance', description: t.description, amount: Number(t.amount), currency: 'RUB', date: t.createdAt, status: 'completed' })
+    }
+    for (const b of bonuses) {
+      items.push({ id: b.id, type: 'bonus_redeem', description: `+${b.bonusDays} дней`, amount: b.bonusDays, date: b.appliedAt, status: 'completed' })
+    }
+
+    items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    return { items }
   })
 
   // POST /:id/reset-password — set new password
