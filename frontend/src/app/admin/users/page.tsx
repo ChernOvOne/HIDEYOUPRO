@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, Search, ChevronLeft, ChevronRight, Loader2, Eye, Shield, Mail, MessageCircle, Calendar, DollarSign, Tag, Download } from 'lucide-react'
+import { Users, Search, ChevronLeft, ChevronRight, Loader2, Eye, Shield, Mail, MessageCircle, Calendar, DollarSign, Tag, Download, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const apiFetch = (path: string, opts?: RequestInit) =>
@@ -32,6 +32,36 @@ export default function UsersPage() {
 
   useEffect(() => { load() }, [load])
 
+  const downloadTemplate = async (type: string) => {
+    const res = await fetch(`/api/admin/import-excel/templates/${type}`, { credentials: 'include' })
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `template_${type}.xlsx`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const importExcel = async (type: string) => {
+    const input = document.createElement('input')
+    input.type = 'file'; input.accept = '.xlsx,.xls'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      const formData = new FormData()
+      formData.append('file', file)
+      try {
+        const res = await fetch(`/api/admin/import-excel/import/${type}`, {
+          method: 'POST', credentials: 'include', body: formData,
+        })
+        const data = await res.json()
+        toast.success(`Импортировано: ${data.imported}`)
+        if (data.errors?.length) toast.error(`Ошибки: ${data.errors.length}`)
+        load()
+      } catch { toast.error('Ошибка импорта') }
+    }
+    input.click()
+  }
+
   const statusBadge = (s: string) => {
     switch (s) {
       case 'ACTIVE':   return <span className="badge-success">Активный</span>
@@ -48,25 +78,33 @@ export default function UsersPage() {
           <h1 className="page-title">Пользователи</h1>
           <p className="page-subtitle">{total} всего</p>
         </div>
-        <button
-          onClick={() => {
-            const params = new URLSearchParams()
-            params.set('export', 'csv')
-            if (search) params.set('search', search)
-            if (status) params.set('status', status)
-            const url = `/api/admin/users?${params}`
-            const a = document.createElement('a')
-            a.href = url
-            a.download = `users-${new Date().toISOString().split('T')[0]}.csv`
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-            toast.success('Экспорт CSV начат')
-          }}
-          className="bg-primary-600 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-primary-700 transition-colors"
-        >
-          <Download className="w-3.5 h-3.5" /> Экспорт CSV
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => downloadTemplate('users')} className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-gray-200 transition-colors">
+            <Download className="w-3.5 h-3.5" /> Шаблон Excel
+          </button>
+          <button onClick={() => importExcel('users')} className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-gray-200 transition-colors">
+            <Upload className="w-3.5 h-3.5" /> Импорт Excel
+          </button>
+          <button
+            onClick={() => {
+              const params = new URLSearchParams()
+              params.set('export', 'csv')
+              if (search) params.set('search', search)
+              if (status) params.set('status', status)
+              const url = `/api/admin/users?${params}`
+              const a = document.createElement('a')
+              a.href = url
+              a.download = `users-${new Date().toISOString().split('T')[0]}.csv`
+              document.body.appendChild(a)
+              a.click()
+              document.body.removeChild(a)
+              toast.success('Экспорт CSV начат')
+            }}
+            className="bg-primary-600 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-primary-700 transition-colors"
+          >
+            <Download className="w-3.5 h-3.5" /> Экспорт CSV
+          </button>
+        </div>
       </div>
 
       <div className="page-content">

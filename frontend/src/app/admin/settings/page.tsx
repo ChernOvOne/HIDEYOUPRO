@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import {
   Save, Loader2, Settings, Shield, Globe, MessageCircle, CreditCard,
-  Mail, Users, Bell, Palette, ChevronDown, Plus, Trash2, UserPlus,
+  Mail, Users, Bell, Palette, ChevronDown, Plus, Trash2, UserPlus, RotateCcw,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
@@ -101,6 +101,16 @@ export default function SettingsPage() {
                 <Field label="Telegram-канал" value={settings.tg_channel} onChange={v => upd('tg_channel', v)} placeholder="https://t.me/channel" />
                 <FieldTextarea label="Приветственное сообщение" value={settings.welcome_message} onChange={v => upd('welcome_message', v)} placeholder="Текст для новых пользователей..." hint="Показывается при первом входе" />
                 <Toggle label="Режим обслуживания" hint="Блокирует новые регистрации и покупки" checked={settings.maintenance_mode === 'true'} onChange={v => upd('maintenance_mode', String(v))} />
+                <div className="pt-4 border-t border-gray-100">
+                  <p className="text-xs text-gray-500 mb-2">Мастер настройки</p>
+                  <button onClick={async () => {
+                    if (!confirm('Перезапустить мастер настройки? Текущие настройки сохранятся.')) return
+                    await api.updateSettings({ setup_complete: 'false' })
+                    window.location.href = '/setup'
+                  }} className="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 flex items-center gap-1.5">
+                    <RotateCcw className="w-3.5 h-3.5" /> Перезапустить Wizard
+                  </button>
+                </div>
               </>
             )}
 
@@ -204,6 +214,15 @@ export default function SettingsPage() {
                 <Field label="LK URL" value={settings.lk_url} onChange={v => upd('lk_url', v)} placeholder="https://lk.example.com" hint="Автоматически генерируется из домена" />
                 <Field label="Webhook домен" value={settings.webhook_domain} onChange={v => upd('webhook_domain', v)} placeholder="api.example.com" hint="Домен для API и вебхуков" />
                 <Field label="MiniApp URL" value={settings.miniapp_url} onChange={v => upd('miniapp_url', v)} placeholder="https://miniapp.example.com" hint="URL Telegram MiniApp" />
+                <div className="p-4 rounded-lg bg-amber-50 border border-amber-100 text-xs text-amber-800 space-y-1">
+                  <p className="font-medium">После сохранения доменов:</p>
+                  <p>Зайдите на сервер и выполните команду:</p>
+                  <code className="block bg-amber-100 rounded px-2 py-1 font-mono text-amber-900">
+                    bash /root/hideyoupro/scripts/setup-domains.sh
+                  </code>
+                  <p>Или через CLI: <code className="bg-amber-100 rounded px-1 font-mono">./hyp domains</code></p>
+                  <p>Скрипт автоматически получит SSL сертификаты и настроит nginx.</p>
+                </div>
                 <SectionTitle>Брендинг</SectionTitle>
                 <Field label="Логотип URL" value={settings.lk_logo_url} onChange={v => upd('lk_logo_url', v)} placeholder="https://example.com/logo.png" hint="URL логотипа для шапки ЛК" />
                 <Field label="Favicon URL" value={settings.lk_favicon_url} onChange={v => upd('lk_favicon_url', v)} placeholder="https://example.com/favicon.ico" />

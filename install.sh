@@ -397,6 +397,7 @@ main_menu() {
     echo -e "  ${CYAN}${BOLD}── Обслуживание ──────────────────────${RESET}"
     echo -e "  ${BOLD}[11]${RESET} Обновить"
     echo -e "  ${BOLD}[12]${RESET} Пересобрать образы"
+    echo -e "  ${BOLD}[13]${RESET} Настроить домены (SSL + nginx)"
     echo -e "  ${BOLD}[0]${RESET}  Выход"
     echo ""; sep
     printf "  ${BOLD}Выбери пункт:${RESET} "
@@ -414,6 +415,7 @@ main_menu() {
       10) do_backup ;;
       11) do_update ;;
       12) build_services ;;
+      13) bash "$(dirname "$0")/scripts/setup-domains.sh" ;;
       0)  echo ""; info "До свидания!"; echo ""; exit 0 ;;
       *)  warn "Неизвестный пункт" ;;
     esac
@@ -431,8 +433,9 @@ case "${1:-menu}" in
   logs)      show_logs ;;
   backup)    do_backup ;;
   migrate)   run_migrations ;;
+  domains|setup-domains) bash "$(dirname "$0")/scripts/setup-domains.sh" ;;
   menu|"")   main_menu ;;
   *)
-    echo "Использование: $0 [install|update|start|stop|status|logs|backup|migrate]"
+    echo "Использование: $0 [install|update|start|stop|status|logs|backup|migrate|domains]"
     exit 1 ;;
 esac

@@ -4,7 +4,7 @@ import { useState, useEffect, memo } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Building2, Wifi, MessageCircle, CreditCard, CheckCircle2, ChevronRight,
-  Loader2, SkipForward, Globe, Mail, Users, DollarSign, ChevronLeft,
+  Loader2, SkipForward, Globe, Mail, Users, DollarSign, ChevronLeft, Upload, Download, FileSpreadsheet, CheckCircle,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
@@ -46,11 +46,12 @@ const STEPS = [
   { id: 'email',     icon: Mail,           title: 'Email (SMTP)',    desc: 'Рассылки и уведомления' },
   { id: 'referral',  icon: Users,          title: 'Рефералы',        desc: 'Бонусы за приглашения' },
   { id: 'accounting',icon: DollarSign,     title: 'Бухгалтерия',     desc: 'Баланс, категории, расходы' },
+  { id: 'import',    icon: Upload,         title: 'Импорт данных',    desc: 'Загрузка из Excel' },
   { id: 'servers',   icon: Globe,          title: 'Серверы',          desc: 'VPS и хостинг' },
   { id: 'partners',  icon: Users,          title: 'Партнёры',         desc: 'Инвесторы и доли' },
 ]
 
-const SKIP_ALLOWED = new Set(['domains', 'remnawave', 'telegram', 'payments', 'email', 'referral', 'accounting', 'servers', 'partners'])
+const SKIP_ALLOWED = new Set(['domains', 'remnawave', 'telegram', 'payments', 'email', 'referral', 'accounting', 'import', 'servers', 'partners'])
 
 export default function SetupPage() {
   const router = useRouter()
@@ -82,6 +83,44 @@ export default function SetupPage() {
   const [servers, setServers] = useState<{ name: string; provider: string; ip: string; monthlyCost: string; currency: string }[]>([])
   const [partners, setPartners] = useState<{ name: string; role: string; share: string; contact: string }[]>([])
   const [recurringExpenses, setRecurringExpenses] = useState<{ name: string; amount: string; paymentDay: string }[]>([])
+
+  // Import step state
+  const [importResults, setImportResults] = useState<Record<string, { imported?: number; errors?: string[] }>>({})
+  const [importLoading, setImportLoading] = useState<Record<string, boolean>>({})
+
+  const downloadTemplate = async (type: string) => {
+    const res = await fetch(`/api/admin/import-excel/templates/${type}`, { credentials: 'include' })
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `template_${type}.xlsx`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const importExcel = async (type: string) => {
+    const input = document.createElement('input')
+    input.type = 'file'; input.accept = '.xlsx,.xls'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      setImportLoading(p => ({ ...p, [type]: true }))
+      const formData = new FormData()
+      formData.append('file', file)
+      try {
+        const res = await fetch(`/api/admin/import-excel/import/${type}`, {
+          method: 'POST', credentials: 'include', body: formData,
+        })
+        const data = await res.json()
+        setImportResults(p => ({ ...p, [type]: { imported: data.imported, errors: data.errors } }))
+        toast.success(`Импортировано: ${data.imported}`)
+        if (data.errors?.length) toast.error(`Ошибки: ${data.errors.length}`)
+      } catch {
+        toast.error('Ошибка импорта')
+      }
+      setImportLoading(p => ({ ...p, [type]: false }))
+    }
+    input.click()
+  }
 
   useEffect(() => {
     api.me().catch(() => router.push('/login'))
@@ -192,6 +231,9 @@ export default function SetupPage() {
               })
             } catch {}
           }
+          break
+        case 'import':
+          // Import is handled inline via downloadTemplate/importExcel helpers
           break
         case 'servers':
           for (const s of servers.filter(s => s.name.trim())) {
@@ -446,8 +488,71 @@ export default function SetupPage() {
             </div>
           )}
 
-          {/* === Серверы === */}
+          {/* === Импорт данных === */}
           {step === 8 && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
+                Загрузите данные из Excel для быстрого старта. Скачайте шаблоны, заполните и загрузите обратно.
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                {/* Финансы */}
+                <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-primary-600" />
+                    <span className="text-sm font-medium">Финансы</span>
+                  </div>
+                  <button onClick={() => downloadTemplate('transactions')}
+                    className="w-full bg-gray-50 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-gray-100 transition-colors">
+                    <Download className="w-3.5 h-3.5" /> Скачать шаблон
+                  </button>
+                  <button onClick={() => importExcel('transactions')} disabled={importLoading.transactions}
+                    className="w-full bg-primary-50 text-primary-700 px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-primary-100 transition-colors disabled:opacity-50">
+                    {importLoading.transactions ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    Загрузить файл
+                  </button>
+                  {importResults.transactions && (
+                    <div className="text-xs space-y-1">
+                      <div className="flex items-center gap-1 text-emerald-600">
+                        <CheckCircle className="w-3 h-3" /> Импортировано: {importResults.transactions.imported}
+                      </div>
+                      {importResults.transactions.errors?.length ? (
+                        <div className="text-red-500">Ошибки: {importResults.transactions.errors.length}</div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+                {/* Пользователи */}
+                <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-primary-600" />
+                    <span className="text-sm font-medium">Пользователи</span>
+                  </div>
+                  <button onClick={() => downloadTemplate('users')}
+                    className="w-full bg-gray-50 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-gray-100 transition-colors">
+                    <Download className="w-3.5 h-3.5" /> Скачать шаблон
+                  </button>
+                  <button onClick={() => importExcel('users')} disabled={importLoading.users}
+                    className="w-full bg-primary-50 text-primary-700 px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-primary-100 transition-colors disabled:opacity-50">
+                    {importLoading.users ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    Загрузить файл
+                  </button>
+                  {importResults.users && (
+                    <div className="text-xs space-y-1">
+                      <div className="flex items-center gap-1 text-emerald-600">
+                        <CheckCircle className="w-3 h-3" /> Импортировано: {importResults.users.imported}
+                      </div>
+                      {importResults.users.errors?.length ? (
+                        <div className="text-red-500">Ошибки: {importResults.users.errors.length}</div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* === Серверы === */}
+          {step === 9 && (
             <div className="space-y-4">
               <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
                 Добавьте серверы (VPS, хостинг) для учёта расходов и мониторинга оплат.
@@ -480,7 +585,7 @@ export default function SetupPage() {
           )}
 
           {/* === Партнёры === */}
-          {step === 9 && (
+          {step === 10 && (
             <div className="space-y-4">
               <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
                 Добавьте партнёров и инвесторов для учёта долей и выплат.

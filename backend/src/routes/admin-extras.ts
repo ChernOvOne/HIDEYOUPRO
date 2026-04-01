@@ -131,6 +131,17 @@ export async function adminExtrasRoutes(app: FastifyInstance) {
   })
 
   // ════════════════════════════════════════════════════════════
+  //  DOMAIN CONFIG (for CLI setup script)
+  // ════════════════════════════════════════════════════════════
+
+  // GET /domain-config — returns saved domain settings for CLI setup
+  app.get('/domain-config', admin, async () => {
+    const keys = ['lk_domain', 'lk_url', 'webhook_domain', 'miniapp_url', 'company_name']
+    const settings = await prisma.setting.findMany({ where: { key: { in: keys } } })
+    return Object.fromEntries(settings.map(s => [s.key, s.value]))
+  })
+
+  // ════════════════════════════════════════════════════════════
   //  RECURRING PAYMENTS
   // ════════════════════════════════════════════════════════════
 

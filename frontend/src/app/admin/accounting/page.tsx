@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { Plus, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Loader2, Search, Filter, Tag } from 'lucide-react'
+import { Plus, Trash2, Edit2, ArrowUpRight, ArrowDownRight, Loader2, Search, Filter, Tag, Download, Upload } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const api = (path: string, opts?: RequestInit) =>
@@ -92,6 +92,36 @@ export default function AccountingPage() {
     load()
   }
 
+  const downloadTemplate = async (type: string) => {
+    const res = await fetch(`/api/admin/import-excel/templates/${type}`, { credentials: 'include' })
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `template_${type}.xlsx`; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const importExcel = async (type: string) => {
+    const input = document.createElement('input')
+    input.type = 'file'; input.accept = '.xlsx,.xls'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      const formData = new FormData()
+      formData.append('file', file)
+      try {
+        const res = await fetch(`/api/admin/import-excel/import/${type}`, {
+          method: 'POST', credentials: 'include', body: formData,
+        })
+        const data = await res.json()
+        toast.success(`Импортировано: ${data.imported}`)
+        if (data.errors?.length) toast.error(`Ошибки: ${data.errors.length}`)
+        load()
+      } catch { toast.error('Ошибка импорта') }
+    }
+    input.click()
+  }
+
   // Summary
   const income  = transactions.filter(t => t.type === 'INCOME').reduce((s, t) => s + Number(t.amount), 0)
   const expense = transactions.filter(t => t.type === 'EXPENSE').reduce((s, t) => s + Number(t.amount), 0)
@@ -104,6 +134,12 @@ export default function AccountingPage() {
           <p className="page-subtitle">{total} транзакций</p>
         </div>
         <div className="flex gap-2">
+          <button onClick={() => downloadTemplate('transactions')} className="btn-default text-xs">
+            <Download className="w-3.5 h-3.5" /> Шаблон Excel
+          </button>
+          <button onClick={() => importExcel('transactions')} className="btn-default text-xs">
+            <Upload className="w-3.5 h-3.5" /> Импорт Excel
+          </button>
           <button onClick={() => setShowCats(!showCats)} className="btn-default text-xs">
             <Tag className="w-3.5 h-3.5" /> Категории
           </button>
