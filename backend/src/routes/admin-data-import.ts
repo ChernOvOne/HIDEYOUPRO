@@ -869,7 +869,22 @@ async function runImport(session: ImportSession, dryRun: boolean) {
         const remnawaveUuid = regexFields.remnawaveUuid || getVal(row, 'remnawaveUuid') || null
         const balanceStr = regexFields.balance || getVal(row, 'balance')
         const balance = balanceStr ? parseFloat(balanceStr.replace(',', '.')) : undefined
-        const legacyId = regexFields.legacyId || getVal(row, 'legacyId') || null
+        // Get legacyId from mapping OR from cross-link target column
+        let legacyId = regexFields.legacyId || getVal(row, 'legacyId') || null
+        if (!legacyId) {
+          // Check if any cross-link points to this file — use target column as legacyId
+          for (const lr of mapping.linkRules) {
+            const tgtFileId = (lr as any).targetFileId || lr.targetFile
+            const tgtField = lr.targetField
+            if (tgtFileId === cfgId && tgtField) {
+              const tgtIdx = headers.indexOf(tgtField)
+              if (tgtIdx >= 0) {
+                legacyId = (row[tgtIdx] || '').trim() || null
+                break
+              }
+            }
+          }
+        }
         const referrerId = regexFields.referrerId || getVal(row, 'referrerId') || null
         const dateStr = regexFields.date || getVal(row, 'date')
         const createdAt = parseDate(dateStr) || undefined
@@ -995,9 +1010,17 @@ async function runImport(session: ImportSession, dryRun: boolean) {
 
     if (fileCfg.type === 'payments') {
       // Apply link rules to find user ID column
-      const linkRule = mapping.linkRules.find(
-        r => r.targetFile === fileCfg.fileId || r.sourceFile === fileCfg.fileId,
-      )
+      // Frontend sends sourceFileId/targetFileId/sourceRegex, backend type has sourceFile/targetFile/regex
+      const linkRule = mapping.linkRules.find(r => {
+        const src = (r as any).sourceFileId || r.sourceFile
+        const tgt = (r as any).targetFileId || r.targetFile
+        return src === cfgId || tgt === cfgId
+      })
+      const linkRegex = linkRule ? ((linkRule as any).sourceRegex || linkRule.regex) : null
+      const linkSourceField = linkRule?.sourceField
+      const linkTargetField = linkRule?.targetField
+
+      console.log('=== PAYMENTS LINK ===', { linkRegex, linkSourceField, legacyMapSize: legacyToDbId.size, linkRule: JSON.stringify(linkRule)?.substring(0, 200) })
 
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i]
@@ -1028,11 +1051,13 @@ async function runImport(session: ImportSession, dryRun: boolean) {
           }
         }
 
-        // 3. Link rule with regex on description
-        if (!userId && linkRule?.regex) {
+        // 3. Link rule with regex on source column
+        if (!userId && linkRegex) {
           try {
-            const re = new RegExp(linkRule.regex)
-            const sourceVal = getVal(row, linkRule.sourceField) || description
+            const re = new RegExp(linkRegex)
+            // Get value from the source column specified in link rule
+            const srcColIdx = linkSourceField ? headers.indexOf(linkSourceField) : -1
+            const sourceVal = srcColIdx >= 0 ? (row[srcColIdx] || '') : description
             const m = sourceVal.match(re)
             if (m) {
               const extractedId = m[1] || m[0]
@@ -1047,6 +1072,15 @@ async function runImport(session: ImportSession, dryRun: boolean) {
               }
             }
           } catch {}
+        }
+
+        // 4. Link rule without regex — direct column value match
+        if (!userId && linkRule && !linkRegex && linkSourceField) {
+          const srcColIdx = headers.indexOf(linkSourceField)
+          const val = srcColIdx >= 0 ? (row[srcColIdx] || '').trim() : ''
+          if (val && legacyToDbId.has(val)) {
+            userId = legacyToDbId.get(val)!
+          }
         }
 
         // Map status string to enum
