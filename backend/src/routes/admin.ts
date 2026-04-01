@@ -37,15 +37,44 @@ export async function adminRoutes(app: FastifyInstance) {
       _sum: { amount: true },
     })
 
+    // Revenue chart — last 30 days of PAID payments by day
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    const recentPayments = await prisma.payment.findMany({
+      where: { status: 'PAID', paidAt: { gte: thirtyDaysAgo } },
+      select: { amount: true, paidAt: true },
+      orderBy: { paidAt: 'asc' },
+    })
+
+    // Group by date
+    const chartMap = new Map<string, number>()
+    for (let d = new Date(thirtyDaysAgo); d <= new Date(); d.setDate(d.getDate() + 1)) {
+      chartMap.set(d.toISOString().slice(0, 10), 0)
+    }
+    for (const p of recentPayments) {
+      if (p.paidAt) {
+        const key = p.paidAt.toISOString().slice(0, 10)
+        chartMap.set(key, (chartMap.get(key) || 0) + Number(p.amount))
+      }
+    }
+    const revenueChart = [...chartMap.entries()].map(([date, amount]) => ({ date, amount }))
+
+    // Conversion rate
+    const usersWithPayment = await prisma.user.count({ where: { paymentsCount: { gt: 0 } } })
+    const conversion = totalUsers > 0 ? Math.round((usersWithPayment / totalUsers) * 100) : 0
+
     return {
-      users:    { total: totalUsers, active: activeUsers },
-      payments: { total: totalPayments, paid: paidPayments, revenue: revenue._sum.amount || 0 },
+      users:    { total: totalUsers, active: activeUsers, withPayment: usersWithPayment },
+      payments: { total: totalPayments, paid: paidPayments, revenue: Number(revenue._sum.amount || 0) },
       accounting: {
-        income:   income._sum.amount || 0,
-        expenses: expenses._sum.amount || 0,
+        income:   Number(income._sum.amount || 0),
+        expenses: Number(expenses._sum.amount || 0),
         transactions: totalTransactions,
       },
       partners: totalPartners,
+      revenueChart,
+      conversion,
     }
   })
 

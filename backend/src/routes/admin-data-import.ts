@@ -83,7 +83,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   totalPaid:     ['total_paid', 'всего оплачено', 'стоимость подписки'],
   utmCode:       ['utm', 'utm_code', 'utm_source'],
   notes:         ['заметки', 'notes', 'теги', 'tags'],
-  createdAt:     ['дата создания', 'created_at', 'registered', 'дата регистрации', 'date'],
+  createdAt:     ['дата создания', 'created_at', 'registered', 'дата регистрации', 'date', 'дата создания заказа'],
 
   // Payments
   amount:        ['amount', 'сумма', 'сумма платежа'],
@@ -92,7 +92,7 @@ const FIELD_ALIASES: Record<string, string[]> = {
   method:        ['метод платежа', 'payment_method', 'способ оплаты'],
   description:   ['description', 'описание', 'описание заказа'],
   externalId:    ['идентификатор платежа', 'payment_id', 'external_id'],
-  paidAt:        ['дата платежа', 'paid_at', 'paid_date'],
+  paidAt:        ['дата платежа', 'paid_at', 'paid_date', 'дата оплаты'],
   cardNumber:    ['номер карты', 'card_number', 'номер карты плательщика'],
   rrn:           ['rrn', 'rrn операции'],
 }
@@ -101,10 +101,22 @@ function autoMapColumns(headers: string[]): Record<string, string> {
   const result: Record<string, string> = {}
   for (const header of headers) {
     const lower = header.toLowerCase().trim()
+    // Exact match first
+    let found = false
     for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
       if (aliases.some(a => a.toLowerCase() === lower)) {
         result[header] = field
+        found = true
         break
+      }
+    }
+    // Partial/contains match (header contains alias or alias contains header)
+    if (!found) {
+      for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
+        if (aliases.some(a => lower.includes(a.toLowerCase()) || a.toLowerCase().includes(lower))) {
+          result[header] = field
+          break
+        }
       }
     }
   }
@@ -1150,6 +1162,8 @@ async function runImport(session: ImportSession, dryRun: boolean) {
 
           const cleanDesc = method ? (method + (description ? ' · ' + description.replace(/\[ID\d+\]\s*/g, '').trim() : '')) : description.replace(/\[ID\d+\]\s*/g, '').trim()
 
+          // Ensure dates from file — NEVER use today's date
+          const paymentDate = createdDate || paidDate
           const payment = await prisma.payment.create({
             data: {
               userId,
@@ -1160,8 +1174,8 @@ async function runImport(session: ImportSession, dryRun: boolean) {
               purpose: 'SUBSCRIPTION' as any,
               externalId: externalId || undefined,
               description: cleanDesc.substring(0, 250) || null,
-              paidAt: paidDate || createdDate || undefined,
-              createdAt: createdDate || undefined,
+              paidAt: status === 'PAID' ? (paidDate || createdDate || undefined) : undefined,
+              ...(paymentDate ? { createdAt: paymentDate } : {}),
             },
           })
           rollbackData.push({ action: 'create', table: 'payment', id: payment.id })
