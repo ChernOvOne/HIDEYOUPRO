@@ -375,9 +375,13 @@ export async function adminDataImportRoutes(app: FastifyInstance) {
       const session = sessions.get(req.params.id)
       if (!session) return reply.code(404).send({ error: 'Сессия не найдена' })
 
+      const body = req.body as any
       session.mapping = {
-        files: req.body.files || [],
-        linkRules: req.body.linkRules || [],
+        files: body.files || [],
+        linkRules: body.linkRules || body.crossLinks || [],
+      }
+      if (body.extractors) {
+        (session.mapping as any).extractors = body.extractors
       }
       session.status = 'mapped'
       return { ok: true }
@@ -393,11 +397,27 @@ export async function adminDataImportRoutes(app: FastifyInstance) {
 
     try {
       const result = await runImport(session, true)
-      session.preview = result
+      // Ensure safe structure
+      const ru = result?.users || {}
+      const rp = result?.payments || {}
+      const rr = result?.referrals || {}
+      const safe = {
+        users: { create: ru.create || 0, update: ru.update || 0, skip: ru.skip || 0, samples: ru.samples || [] },
+        payments: { create: rp.create || 0, link: rp.link || 0, noLink: rp.noLink || 0, samples: rp.samples || [] },
+        referrals: { link: rr.link || 0 },
+        errors: result?.errors || [],
+      }
+      session.preview = safe
       session.status = 'previewed'
-      return result
+      return safe
     } catch (err: any) {
-      return reply.code(500).send({ error: `Ошибка предпросмотра: ${err.message}` })
+      console.error('Preview error:', err)
+      return {
+        users: { create: 0, update: 0, skip: 0, samples: [] },
+        payments: { create: 0, link: 0, noLink: 0, samples: [] },
+        referrals: { link: 0 },
+        errors: [`Ошибка: ${err.message}`],
+      }
     }
   })
 
@@ -786,7 +806,7 @@ async function runImport(session: ImportSession, dryRun: boolean) {
 
   const stats = {
     users: { create: 0, update: 0, skip: 0, samples: [] as any[] },
-    payments: { create: 0, link: 0, unlinked: 0, samples: [] as any[] },
+    payments: { create: 0, link: 0, noLink: 0, samples: [] as any[] },
     referrals: { link: 0 },
     errors: errors,
   }
@@ -1004,10 +1024,10 @@ async function runImport(session: ImportSession, dryRun: boolean) {
               stats.payments.link++
             } else {
               stats.payments.create++
-              stats.payments.unlinked++
+              stats.payments.noLink++
             }
           } else {
-            stats.payments.unlinked++
+            stats.payments.noLink++
             stats.payments.create++
           }
 
@@ -1022,7 +1042,7 @@ async function runImport(session: ImportSession, dryRun: boolean) {
           }
         } else {
           if (!userId) {
-            stats.payments.unlinked++
+            stats.payments.noLink++
             errors.push(`Платёж строка ${i + 2}: пользователь не найден — пропущен`)
             continue
           }

@@ -1044,30 +1044,30 @@ export default function AdminImportExport() {
                         <p className="text-purple-800 text-lg font-bold mt-1">{preview.referrals?.link ?? 0}</p>
                         <p className="text-purple-600 text-xs">связать</p>
                       </div>
-                      <div className={`rounded-lg p-3 ${preview.errors.length > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
-                        <p className={`text-xs font-medium ${preview.errors.length > 0 ? 'text-red-600' : 'text-gray-500'}`}>Ошибки</p>
-                        <p className={`text-lg font-bold mt-1 ${preview.errors.length > 0 ? 'text-red-700' : 'text-gray-700'}`}>
-                          {preview.errors.length}
+                      <div className={`rounded-lg p-3 ${(preview.errors?.length || 0) > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>
+                        <p className={`text-xs font-medium ${(preview.errors?.length || 0) > 0 ? 'text-red-600' : 'text-gray-500'}`}>Ошибки</p>
+                        <p className={`text-lg font-bold mt-1 ${(preview.errors?.length || 0) > 0 ? 'text-red-700' : 'text-gray-700'}`}>
+                          {(preview.errors?.length || 0)}
                         </p>
-                        <p className={`text-xs ${preview.errors.length > 0 ? 'text-red-500' : 'text-gray-400'}`}>
-                          {preview.errors.length > 0 ? 'найдено' : 'нет ошибок'}
+                        <p className={`text-xs ${(preview.errors?.length || 0) > 0 ? 'text-red-500' : 'text-gray-400'}`}>
+                          {(preview.errors?.length || 0) > 0 ? 'найдено' : 'нет ошибок'}
                         </p>
                       </div>
                     </div>
 
                     {/* Errors */}
-                    {preview.errors.length > 0 && (
+                    {(preview.errors?.length || 0) > 0 && (
                       <div className="bg-red-50 rounded-lg p-4">
                         <div className="flex items-center gap-2 mb-2">
                           <AlertCircle className="w-4 h-4 text-red-600" />
-                          <p className="text-red-700 text-sm font-medium">Ошибки ({preview.errors.length})</p>
+                          <p className="text-red-700 text-sm font-medium">Ошибки ({(preview.errors?.length || 0)})</p>
                         </div>
                         <ul className="space-y-1">
                           {preview.errors.slice(0, 10).map((err, i) => (
                             <li key={i} className="text-red-600 text-xs">• {err}</li>
                           ))}
-                          {preview.errors.length > 10 && (
-                            <li className="text-red-400 text-xs">... и ещё {preview.errors.length - 10}</li>
+                          {(preview.errors?.length || 0) > 10 && (
+                            <li className="text-red-400 text-xs">... и ещё {(preview.errors?.length || 0) - 10}</li>
                           )}
                         </ul>
                       </div>
