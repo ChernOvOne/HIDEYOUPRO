@@ -45,11 +45,10 @@ interface CrossFileLink {
 }
 
 interface PreviewResult {
-  users: { create: number; update: number; skip: number }
-  payments: { create: number; link: number; noLink: number }
-  referrals: { link: number }
-  errors: string[]
-  samples: Record<string, any>[]
+  users?: { create: number; update: number; skip: number; samples?: any[] }
+  payments?: { create: number; link: number; noLink: number; samples?: any[] }
+  referrals?: { link: number }
+  errors?: string[]
 }
 
 interface ImportSession {
@@ -203,6 +202,8 @@ export default function AdminImportExport() {
 
   // Export
   const [exporting, setExporting] = useState<string | null>(null)
+  // Error display
+  const [renderError, setRenderError] = useState<string | null>(null)
 
   /* ─── Load history ─── */
   const loadHistory = useCallback(async () => {
@@ -427,7 +428,10 @@ export default function AdminImportExport() {
       setStep(3)
       toast.success('Предварительный просмотр готов')
     } catch (err: any) {
-      toast.error(err.message || 'Ошибка')
+      const msg = err?.message || String(err)
+      setRenderError(`Preview error: ${msg}`)
+      toast.error(msg || 'Ошибка')
+      console.error('Preview error full:', err)
     } finally {
       setPreviewing(false)
     }
@@ -534,6 +538,13 @@ export default function AdminImportExport() {
 
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
+      {/* Error display */}
+      {renderError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+          <p className="text-red-800 font-medium text-sm">Ошибка: {renderError}</p>
+          <button onClick={() => setRenderError(null)} className="text-red-600 text-xs mt-1 underline">Закрыть</button>
+        </div>
+      )}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Импорт / Экспорт данных</h1>
@@ -1082,7 +1093,7 @@ export default function AdminImportExport() {
                           <p className="text-red-700 text-sm font-medium">Ошибки ({(preview.errors?.length || 0)})</p>
                         </div>
                         <ul className="space-y-1">
-                          {preview.errors.slice(0, 10).map((err, i) => (
+                          {(preview.errors || []).slice(0, 10).map((err: string, i: number) => (
                             <li key={i} className="text-red-600 text-xs">• {err}</li>
                           ))}
                           {(preview.errors?.length || 0) > 10 && (
@@ -1093,16 +1104,16 @@ export default function AdminImportExport() {
                     )}
 
                     {/* Sample records */}
-                    {preview.samples.length > 0 && (
+                    {(preview.users?.samples?.length || 0) > 0 && (
                       <div>
                         <p className="text-gray-500 text-xs font-medium mb-2 uppercase tracking-wide">
-                          Пример записей (первые {preview.samples.length})
+                          Пример записей (первые {preview.users?.samples?.length || 0})
                         </p>
                         <div className="border border-gray-100 rounded-lg overflow-x-auto">
                           <table className="w-full text-xs">
                             <thead>
                               <tr className="bg-gray-50">
-                                {Object.keys(preview.samples[0]).map(key => (
+                                {Object.keys((preview.users?.samples || preview.payments?.samples || [])[0] || {}).map(key => (
                                   <th key={key} className="text-left px-3 py-2 text-gray-500 font-medium whitespace-nowrap">
                                     {key}
                                   </th>
@@ -1110,7 +1121,7 @@ export default function AdminImportExport() {
                               </tr>
                             </thead>
                             <tbody>
-                              {preview.samples.map((row, i) => (
+                              {(preview.users?.samples || preview.payments?.samples || []).map((row: any, i: number) => (
                                 <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
                                   {Object.values(row).map((val, j) => (
                                     <td key={j} className="px-3 py-2 text-gray-700 font-mono whitespace-nowrap max-w-[200px] truncate">
