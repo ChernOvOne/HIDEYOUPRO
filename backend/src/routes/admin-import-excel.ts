@@ -7,6 +7,7 @@ import { prisma } from '../db'
    ─────────────────────────────────────────────────────────── */
 
 export async function adminImportExcelRoutes(app: FastifyInstance) {
+  const admin = { preHandler: [app.adminOnly] }
 
   /* ════════════════════════════════════════════════════════════
      TEMPLATE DOWNLOADS
@@ -89,7 +90,7 @@ export async function adminImportExcelRoutes(app: FastifyInstance) {
      ════════════════════════════════════════════════════════════ */
 
   // POST /import/transactions
-  app.post('/import/transactions', async (req, reply) => {
+  app.post('/import/transactions', admin, async (req, reply) => {
     const data = await req.file()
     if (!data) return reply.code(400).send({ error: 'No file uploaded' })
 
@@ -200,7 +201,7 @@ export async function adminImportExcelRoutes(app: FastifyInstance) {
   })
 
   // POST /import/users
-  app.post('/import/users', async (req, reply) => {
+  app.post('/import/users', admin, async (req, reply) => {
     const data = await req.file()
     if (!data) return reply.code(400).send({ error: 'No file uploaded' })
 

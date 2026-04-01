@@ -16,6 +16,8 @@ export default function UsersPage() {
   const [search, setSearch]   = useState('')
   const [status, setStatus]   = useState('')
   const [loading, setLoading] = useState(true)
+  const [importing, setImporting] = useState(false)
+  const [importProgress, setImportProgress] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -47,17 +49,55 @@ export default function UsersPage() {
     input.onchange = async () => {
       const file = input.files?.[0]
       if (!file) return
+      setImporting(true)
+      setImportProgress(`Загрузка ${file.name}...`)
+
       const formData = new FormData()
       formData.append('file', file)
+
       try {
-        const res = await fetch(`/api/admin/import-excel/import/${type}`, {
-          method: 'POST', credentials: 'include', body: formData,
+        // Upload with XHR for progress tracking
+        const result = await new Promise<any>((resolve, reject) => {
+          const xhr = new XMLHttpRequest()
+          xhr.open('POST', `/api/admin/import-excel/import/${type}`)
+          xhr.withCredentials = true
+
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 100)
+              setImportProgress(`Загрузка: ${pct}%`)
+            }
+          }
+
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              setImportProgress('Обработка данных...')
+              try { resolve(JSON.parse(xhr.responseText)) }
+              catch { reject(new Error('Invalid response')) }
+            } else {
+              reject(new Error(`HTTP ${xhr.status}`))
+            }
+          }
+
+          xhr.onerror = () => reject(new Error('Ошибка сети'))
+          xhr.send(formData)
         })
-        const data = await res.json()
-        toast.success(`Импортировано: ${data.imported}`)
-        if (data.errors?.length) toast.error(`Ошибки: ${data.errors.length}`)
+
+        const parts = []
+        if (result.imported) parts.push(`Создано: ${result.imported}`)
+        if (result.updated) parts.push(`Обновлено: ${result.updated}`)
+        if (result.synced) parts.push(`Синхронизировано: ${result.synced}`)
+        toast.success(parts.join(' · ') || 'Готово')
+
+        if (result.errors?.length) {
+          toast.error(`Ошибки: ${result.errors.length}`, { duration: 5000 })
+        }
         load()
-      } catch { toast.error('Ошибка импорта') }
+      } catch (e: any) {
+        toast.error(e.message || 'Ошибка импорта')
+      }
+      setImporting(false)
+      setImportProgress('')
     }
     input.click()
   }
@@ -92,8 +132,10 @@ export default function UsersPage() {
           <button onClick={() => downloadTemplate('users')} className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-gray-200 transition-colors">
             <Download className="w-3.5 h-3.5" /> Шаблон Excel
           </button>
-          <button onClick={() => importExcel('users')} className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-gray-200 transition-colors">
-            <Upload className="w-3.5 h-3.5" /> Импорт Excel
+          <button onClick={() => importExcel('users')} disabled={importing}
+            className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-gray-200 transition-colors disabled:opacity-50">
+            {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            {importing ? importProgress : 'Импорт Excel'}
           </button>
           <button
             onClick={() => {
