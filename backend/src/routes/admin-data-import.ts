@@ -110,10 +110,10 @@ function autoMapColumns(headers: string[]): Record<string, string> {
         break
       }
     }
-    // Partial/contains match (header contains alias or alias contains header)
+    // Partial match: header contains alias (alias must be 5+ chars to avoid false matches)
     if (!found) {
       for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
-        if (aliases.some(a => lower.includes(a.toLowerCase()) || a.toLowerCase().includes(lower))) {
+        if (aliases.some(a => a.length >= 5 && lower.includes(a.toLowerCase()))) {
           result[header] = field
           break
         }
