@@ -1,4 +1,3 @@
-// @ts-nocheck — TODO: adapt to unified schema
 import type { FastifyInstance } from 'fastify'
 import { z }      from 'zod'
 import { prisma } from '../db'
@@ -108,7 +107,7 @@ export async function adminPromoRoutes(app: FastifyInstance) {
           where: {
             userId: usage.userId,
             status: 'PAID',
-            confirmedAt: { gte: usage.activatedAt },
+            paidAt: { gte: usage.activatedAt },
           },
         })
         usage.usedForPurchase = !!payment
@@ -209,7 +208,7 @@ export async function userPromoRoutes(app: FastifyInstance) {
       const { balanceService } = await import('../services/balance')
       await balanceService.credit({
         userId,
-        amount: promo.balanceAmount,
+        amount: Number(promo.balanceAmount),
         type: 'TOPUP',
         description: `Промокод ${promo.code}`,
       })

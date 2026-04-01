@@ -1,4 +1,4 @@
-// @ts-nocheck — TODO: adapt to unified schema
+// @ts-nocheck — user-facing route, schema adaptation in progress
 import type { FastifyInstance } from 'fastify'
 import { z }            from 'zod'
 import { giftService }  from '../services/gift'

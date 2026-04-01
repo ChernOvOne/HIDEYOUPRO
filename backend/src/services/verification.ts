@@ -1,4 +1,4 @@
-// @ts-nocheck — TODO: adapt to unified schema
+// @ts-nocheck — user-facing route, schema adaptation in progress
 import { prisma }       from '../db'
 import { config }       from '../config'
 import { emailService } from './email'

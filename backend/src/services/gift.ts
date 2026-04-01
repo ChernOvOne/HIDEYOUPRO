@@ -1,4 +1,4 @@
-// @ts-nocheck — TODO: adapt to unified schema
+// @ts-nocheck — user-facing route, schema adaptation in progress
 import { nanoid }    from 'nanoid'
 import { prisma }    from '../db'
 import { config }    from '../config'
@@ -160,7 +160,7 @@ class GiftService {
         currency:    'RUB',
         status:      'PAID',
         purpose:     'GIFT',
-        confirmedAt: new Date(),
+        paidAt: new Date(),
         yukassaStatus: JSON.stringify({
           _giftClaim: true,
           giftCode:   code,

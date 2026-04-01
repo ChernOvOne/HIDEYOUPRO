@@ -22,6 +22,7 @@ declare module '@fastify/jwt' {
 
 export interface JWTPayload {
   id:   string
+  sub:  string
   role: 'USER' | 'ADMIN' | 'EDITOR' | 'INVESTOR'
   iat?: number
   exp?: number

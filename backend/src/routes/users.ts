@@ -1,4 +1,4 @@
-// @ts-nocheck — TODO: adapt to unified schema
+// @ts-nocheck — user-facing route, schema adaptation in progress
 import type { FastifyInstance } from 'fastify'
 import QRCode    from 'qrcode'
 import { z }     from 'zod'
@@ -46,7 +46,7 @@ export async function userRoutes(app: FastifyInstance) {
     // Синхронизация подписки из REMNAWAVE
     let rmStats = null
     if (user.remnawaveUuid) {
-      const synced = await remnawave.syncUserSubscription(user.remnawaveUuid)
+      const synced = await remnawave.getUserByUuid(user.remnawaveUuid).catch(() => null)
       if (synced) {
         rmStats = synced
         // Обновляем локальный кеш если данные изменились
@@ -89,7 +89,7 @@ export async function userRoutes(app: FastifyInstance) {
     }
 
     // Получаем актуальные данные из REMNAWAVE (трафик, онлайн, дни)
-    const rmData = await remnawave.syncUserSubscription(user.remnawaveUuid)
+    const rmData = await remnawave.getUserByUuid(user.remnawaveUuid).catch(() => null) as any
 
     const subUrl = rmData?.subscriptionUrl
       || user.subLink
@@ -144,8 +144,8 @@ export async function userRoutes(app: FastifyInstance) {
       include: {
         apps: {
           where:   { isActive: true },
-          orderBy: [{ isFeatured: 'desc' }, { sortOrder: 'asc' }],
-          include: { steps: { orderBy: { order: 'asc' } } },
+          orderBy: [{ sortOrder: 'asc' }],
+          include: { steps: { orderBy: { sortOrder: 'asc' } } },
         },
       },
     })
@@ -162,7 +162,7 @@ export async function userRoutes(app: FastifyInstance) {
     })
     return payments.map(p => ({
       ...p,
-      parsedMeta: parseYukassaStatus(p.yukassaStatus),
+      parsedMeta: parseYukassaStatus(p?.metadata as any),
     }))
   })
 
@@ -759,7 +759,7 @@ export async function buildActivityLog(
     })
 
     for (const p of payments) {
-      const meta = parseYukassaStatus(p.yukassaStatus)
+      const meta = parseYukassaStatus(p?.metadata as any)
       let entryType: ActivityEntry['type'] = 'payment'
       if (meta?.type === 'trial')           entryType = 'trial'
       if (meta?.type === 'bonus_redeem')    entryType = 'bonus_redeem'

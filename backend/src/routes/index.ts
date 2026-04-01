@@ -14,6 +14,8 @@ import { adminBroadcastRoutes }   from './admin-broadcast'
 import { adminBotBlockRoutes }    from './admin-bot-blocks'
 import { adminAnalyticsRoutes }   from './admin-analytics'
 import { adminReportRoutes }      from './admin-reports'
+import { adminImportRoutes }      from './admin-import'
+import { adminLandingRoutes }     from './admin-landing'
 import { userRoutes }             from './users'
 import { tariffRoutes }           from './tariffs'
 import { paymentRoutes }          from './payments'
@@ -22,6 +24,11 @@ import { publicRoutes }           from './public'
 import { giftRoutes }             from './gifts'
 import { verificationRoutes }     from './verification'
 import { userPromoRoutes }        from './promo'
+import { newsRoutes, adminNewsRoutes }               from './news'
+import { notificationRoutes, adminNotificationRoutes } from './notifications'
+import { proxyRoutes, adminProxyRoutes }             from './proxies'
+import { instructionRoutes, adminInstructionRoutes } from './instructions'
+import { uploadRoutes }           from './upload'
 
 export async function registerRoutes(app: FastifyInstance) {
   app.get('/health', async () => ({
@@ -33,30 +40,39 @@ export async function registerRoutes(app: FastifyInstance) {
 
   // Auth
   await app.register(authRoutes, { prefix: '/api/auth' })
-
-  // Setup wizard
   await app.register(setupRoutes, { prefix: '/api/setup' })
 
   // Public
   await app.register(publicRoutes, { prefix: '/api/public' })
+  await app.register(newsRoutes,   { prefix: '/api/news' })
 
   // User-facing
-  await app.register(userRoutes,        { prefix: '/api/user' })
-  await app.register(tariffRoutes,      { prefix: '/api/tariffs' })
-  await app.register(paymentRoutes,     { prefix: '/api/payments/user' })
-  await app.register(giftRoutes,        { prefix: '/api/gifts' })
-  await app.register(verificationRoutes,{ prefix: '/api/verification' })
-  await app.register(userPromoRoutes,   { prefix: '/api/user/promo' })
+  await app.register(userRoutes,         { prefix: '/api/user' })
+  await app.register(tariffRoutes,       { prefix: '/api/tariffs' })
+  await app.register(paymentRoutes,      { prefix: '/api/payments/user' })
+  await app.register(giftRoutes,         { prefix: '/api/gifts' })
+  await app.register(verificationRoutes, { prefix: '/api/verification' })
+  await app.register(userPromoRoutes,    { prefix: '/api/user/promo' })
+  await app.register(notificationRoutes, { prefix: '/api/notifications' })
+  await app.register(proxyRoutes,        { prefix: '/api/proxies' })
+  await app.register(instructionRoutes,  { prefix: '/api/instructions' })
 
   // Webhooks
-  await app.register(webhookRoutes,      { prefix: '/api/webhooks' })
+  await app.register(webhookRoutes,        { prefix: '/api/webhooks' })
   await app.register(paymentWebhookRoutes, { prefix: '/api/payments' })
 
   // Admin core
-  await app.register(adminRoutes,            { prefix: '/api/admin' })
-  await app.register(adminUserRoutes,        { prefix: '/api/admin/users' })
-  await app.register(adminTariffRoutes,      { prefix: '/api/admin/tariffs' })
-  await app.register(adminPaymentRoutes,     { prefix: '/api/admin/payments' })
+  await app.register(adminRoutes,              { prefix: '/api/admin' })
+  await app.register(adminUserRoutes,          { prefix: '/api/admin/users' })
+  await app.register(adminTariffRoutes,        { prefix: '/api/admin/tariffs' })
+  await app.register(adminPaymentRoutes,       { prefix: '/api/admin/payments' })
+  await app.register(adminNewsRoutes,          { prefix: '/api/admin/news' })
+  await app.register(adminNotificationRoutes,  { prefix: '/api/admin/notifications' })
+  await app.register(adminProxyRoutes,         { prefix: '/api/admin/proxies' })
+  await app.register(adminInstructionRoutes,   { prefix: '/api/admin/instructions' })
+  await app.register(adminImportRoutes,        { prefix: '/api/admin/import' })
+  await app.register(adminLandingRoutes,       { prefix: '/api/admin/landing' })
+  await app.register(uploadRoutes,             { prefix: '/api/admin' })
 
   // Accounting & Finance
   await app.register(adminAccountingRoutes,  { prefix: '/api/admin/accounting' })

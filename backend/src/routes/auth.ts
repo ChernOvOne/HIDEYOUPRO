@@ -38,6 +38,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     const token = app.jwt.sign({
       id:   user.id,
+      sub:  user.id,
       role: user.role,
     })
 
@@ -88,7 +89,7 @@ export async function authRoutes(app: FastifyInstance) {
       },
     })
 
-    const token = app.jwt.sign({ id: user.id, role: user.role })
+    const token = app.jwt.sign({ id: user.id, sub: user.id, role: user.role })
 
     reply.setCookie('token', token, {
       path: '/', httpOnly: true, secure: config.isProd,

@@ -1,4 +1,4 @@
-// @ts-nocheck — TODO: adapt to unified schema
+// @ts-nocheck — user-facing route, schema adaptation in progress
 import type { FastifyInstance } from 'fastify'
 import { z }                from 'zod'
 import { prisma }           from '../db'
@@ -107,7 +107,7 @@ export async function paymentRoutes(app: FastifyInstance) {
     })
 
     if (paymentMeta) {
-      await prisma.payment.update({ where: { id: result.orderId }, data: { yukassaStatus: JSON.stringify(paymentMeta) } })
+      await prisma.payment.update({ where: { id: result.orderId }, data: { status: JSON.stringify(paymentMeta) } })
     }
 
     return result
@@ -131,7 +131,7 @@ export async function paymentRoutes(app: FastifyInstance) {
       amount:      payment.amount,
       currency:    payment.currency,
       tariff:      payment.tariff,
-      confirmedAt: payment.confirmedAt,
+      confirmedAt: payment?.paidAt,
       createdAt:   payment.createdAt,
     }
   })
