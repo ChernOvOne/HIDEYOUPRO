@@ -73,43 +73,60 @@ const FILE_TYPE_LABELS: Record<FileType, string> = {
 
 const SYSTEM_FIELDS: Record<FileType, { value: string; label: string }[]> = {
   users: [
-    { value: '__skip', label: 'Пропустить' },
-    { value: 'email', label: 'Email' },
+    { value: '__skip', label: '— Пропустить —' },
+    { value: 'legacyId', label: 'ID (старая система)' },
     { value: 'telegramId', label: 'Telegram ID' },
-    { value: 'telegramName', label: 'Telegram имя' },
-    { value: 'phone', label: 'Телефон' },
+    { value: 'telegramName', label: 'Telegram Username' },
     { value: 'name', label: 'Имя' },
-    { value: 'legacyId', label: 'Legacy ID' },
+    { value: 'email', label: 'Email' },
+    { value: 'phone', label: 'Телефон' },
+    { value: 'remnawaveUuid', label: 'UUID REMNAWAVE' },
+    { value: 'subLink', label: 'Ссылка подписки' },
+    { value: 'subStatus', label: 'Статус подписки (ACTIVE/INACTIVE/EXPIRED)' },
+    { value: 'subExpireAt', label: 'Дата окончания подписки' },
     { value: 'balance', label: 'Баланс' },
     { value: 'referralCode', label: 'Реферальный код' },
-    { value: 'referredBy', label: 'Приглашён (код)' },
+    { value: 'referrerId', label: 'ID реферера (Legacy ID пригласившего)' },
+    { value: 'utmCode', label: 'UTM код' },
+    { value: 'source', label: 'Источник' },
+    { value: 'notes', label: 'Заметки' },
+    { value: 'totalPaid', label: 'Всего оплачено' },
+    { value: 'bonusDays', label: 'Бонусные дни' },
     { value: 'createdAt', label: 'Дата регистрации' },
-    { value: 'note', label: 'Заметка' },
+    { value: 'lastLoginAt', label: 'Последний вход' },
+    { value: 'isActive', label: 'Активен (true/false)' },
+    { value: 'role', label: 'Роль (USER/ADMIN)' },
   ],
   payments: [
-    { value: '__skip', label: 'Пропустить' },
-    { value: 'amount', label: 'Сумма' },
-    { value: 'currency', label: 'Валюта' },
-    { value: 'status', label: 'Статус' },
-    { value: 'method', label: 'Способ оплаты' },
-    { value: 'description', label: 'Описание' },
-    { value: 'externalId', label: 'Внешний ID' },
-    { value: 'userId', label: 'ID пользователя' },
+    { value: '__skip', label: '— Пропустить —' },
+    { value: 'legacyId', label: 'ID пользователя (Legacy)' },
+    { value: 'telegramId', label: 'Telegram ID пользователя' },
     { value: 'userEmail', label: 'Email пользователя' },
-    { value: 'createdAt', label: 'Дата' },
-    { value: 'legacyId', label: 'Legacy ID' },
+    { value: 'amount', label: 'Сумма' },
+    { value: 'amountNet', label: 'Сумма к зачислению' },
+    { value: 'currency', label: 'Валюта' },
+    { value: 'status', label: 'Статус платежа' },
+    { value: 'method', label: 'Способ оплаты (карта, SberPay...)' },
+    { value: 'description', label: 'Описание' },
+    { value: 'externalId', label: 'ID платежа (внешний)' },
+    { value: 'provider', label: 'Провайдер (YUKASSA, CRYPTOPAY...)' },
+    { value: 'createdAt', label: 'Дата создания' },
+    { value: 'paidAt', label: 'Дата оплаты' },
+    { value: 'cardNumber', label: 'Номер карты' },
+    { value: 'rrn', label: 'RRN операции' },
+    { value: 'refundAmount', label: 'Сумма возврата' },
+    { value: 'refundDate', label: 'Дата возврата' },
   ],
   transactions: [
-    { value: '__skip', label: 'Пропустить' },
+    { value: '__skip', label: '— Пропустить —' },
+    { value: 'type', label: 'Тип (INCOME/EXPENSE)' },
     { value: 'amount', label: 'Сумма' },
-    { value: 'type', label: 'Тип' },
     { value: 'description', label: 'Описание' },
-    { value: 'userId', label: 'ID пользователя' },
-    { value: 'userEmail', label: 'Email пользователя' },
+    { value: 'category', label: 'Категория' },
     { value: 'createdAt', label: 'Дата' },
-    { value: 'balanceBefore', label: 'Баланс до' },
-    { value: 'balanceAfter', label: 'Баланс после' },
-    { value: 'legacyId', label: 'Legacy ID' },
+    { value: 'legacyId', label: 'ID пользователя (Legacy)' },
+    { value: 'telegramId', label: 'Telegram ID' },
+    { value: 'userEmail', label: 'Email' },
   ],
 }
 
@@ -1008,23 +1025,23 @@ export default function AdminImportExport() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                       <div className="bg-emerald-50 rounded-lg p-3">
                         <p className="text-emerald-700 text-xs font-medium">Пользователи</p>
-                        <p className="text-emerald-800 text-lg font-bold mt-1">{preview.users.create}</p>
+                        <p className="text-emerald-800 text-lg font-bold mt-1">{preview.users?.create ?? 0}</p>
                         <p className="text-emerald-600 text-xs">создать</p>
                         <div className="text-emerald-600 text-xs mt-0.5">
-                          {preview.users.update} обновить · {preview.users.skip} пропустить
+                          {preview.users?.update ?? 0} обновить · {preview.users?.skip ?? 0} пропустить
                         </div>
                       </div>
                       <div className="bg-blue-50 rounded-lg p-3">
                         <p className="text-blue-700 text-xs font-medium">Платежи</p>
-                        <p className="text-blue-800 text-lg font-bold mt-1">{preview.payments.create}</p>
+                        <p className="text-blue-800 text-lg font-bold mt-1">{preview.payments?.create ?? 0}</p>
                         <p className="text-blue-600 text-xs">создать</p>
                         <div className="text-blue-600 text-xs mt-0.5">
-                          {preview.payments.link} привязать · {preview.payments.noLink} без связи
+                          {preview.payments?.link ?? 0} привязать · {preview.payments?.noLink ?? 0} без связи
                         </div>
                       </div>
                       <div className="bg-purple-50 rounded-lg p-3">
                         <p className="text-purple-700 text-xs font-medium">Рефералы</p>
-                        <p className="text-purple-800 text-lg font-bold mt-1">{preview.referrals.link}</p>
+                        <p className="text-purple-800 text-lg font-bold mt-1">{preview.referrals?.link ?? 0}</p>
                         <p className="text-purple-600 text-xs">связать</p>
                       </div>
                       <div className={`rounded-lg p-3 ${preview.errors.length > 0 ? 'bg-red-50' : 'bg-gray-50'}`}>

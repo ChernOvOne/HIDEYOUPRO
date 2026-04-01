@@ -66,17 +66,35 @@ const sessions = new Map<string, ImportSession>()
 // ── Auto-mapping dictionary ──────────────────────────────────
 
 const FIELD_ALIASES: Record<string, string[]> = {
+  // Users
+  legacyId:      ['id', 'legacy_id', 'old_id', 'user_id'],
   telegramId:    ['telegram_id', 'tg_id', 'telegram id', 'телеграм id'],
+  telegramName:  ['username', 'tg_username', 'имя пользователя', 'ник'],
+  name:          ['имя', 'name', 'фио', 'first_name'],
   email:         ['email', 'e-mail', 'почта'],
-  telegramName:  ['username', 'tg_username', 'имя пользователя'],
-  remnawaveUuid: ['uuid', 'remnawave_uuid'],
-  balance:       ['balance', 'баланс'],
-  legacyId:      ['id', 'legacy_id'],
-  referrerId:    ['referrer', 'referrer id', 'ref_id', 'реферер'],
-  date:          ['date', 'дата', 'дата платежа', 'дата создания', 'created_at'],
+  phone:         ['телефон', 'phone', 'номер'],
+  remnawaveUuid: ['uuid', 'remnawave_uuid', 'vless', 'key', 'ключ'],
+  subLink:       ['url_sub', 'sub_url', 'subscription_url', 'ссылка подписки'],
+  subStatus:     ['статус', 'status', 'subscription_status', 'статус подписки'],
+  balance:       ['balance', 'баланс', 'баланс юзера'],
+  referrerId:    ['referrer', 'referrer id', 'ref_id', 'реферер', 'referrer_id'],
+  referralCode:  ['referral_code', 'реферальный код', 'ref_code'],
+  bonusDays:     ['bonus_days', 'бонусные дни', 'доп дни'],
+  totalPaid:     ['total_paid', 'всего оплачено', 'стоимость подписки'],
+  utmCode:       ['utm', 'utm_code', 'utm_source'],
+  notes:         ['заметки', 'notes', 'теги', 'tags'],
+  createdAt:     ['дата создания', 'created_at', 'registered', 'дата регистрации', 'date'],
+
+  // Payments
   amount:        ['amount', 'сумма', 'сумма платежа'],
-  status:        ['status', 'статус', 'статус платежа'],
+  amountNet:     ['сумма к зачислению', 'net_amount'],
+  status_pay:    ['status', 'статус', 'статус платежа'],
+  method:        ['метод платежа', 'payment_method', 'способ оплаты'],
   description:   ['description', 'описание', 'описание заказа'],
+  externalId:    ['идентификатор платежа', 'payment_id', 'external_id'],
+  paidAt:        ['дата платежа', 'paid_at', 'paid_date'],
+  cardNumber:    ['номер карты', 'card_number', 'номер карты плательщика'],
+  rrn:           ['rrn', 'rrn операции'],
 }
 
 function autoMapColumns(headers: string[]): Record<string, string> {
