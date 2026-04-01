@@ -16,6 +16,7 @@ import { adminAnalyticsRoutes }   from './admin-analytics'
 import { adminReportRoutes }      from './admin-reports'
 import { adminImportRoutes }      from './admin-import'
 import { adminImportExcelRoutes } from './admin-import-excel'
+import { adminDataImportRoutes }  from './admin-data-import'
 import { adminLandingRoutes }     from './admin-landing'
 import { userRoutes }             from './users'
 import { tariffRoutes }           from './tariffs'
@@ -76,6 +77,7 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(adminInstructionRoutes,   { prefix: '/api/admin/instructions' })
   await app.register(adminImportRoutes,        { prefix: '/api/admin/import' })
   await app.register(adminImportExcelRoutes,   { prefix: '/api/admin/import-excel' })
+  await app.register(adminDataImportRoutes,    { prefix: '/api/admin/data-import' })
   await app.register(adminLandingRoutes,       { prefix: '/api/admin/landing' })
   await app.register(uploadRoutes,             { prefix: '/api/admin' })
 

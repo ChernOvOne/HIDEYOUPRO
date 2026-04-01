@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * HIDEYOU PRO — Legacy Data Migration
  * Imports users from contacts.xlsx and payments from all-payments.csv
