@@ -12,6 +12,7 @@ import { adminPaymentRoutes, paymentWebhookRoutes } from './admin-payments'
 import { adminFunnelRoutes }      from './admin-funnels'
 // import { adminBroadcastRoutes }   from './admin-broadcast' // TODO: port from HideYou
 import { adminBotBlockRoutes }    from './admin-bot-blocks'
+import { adminAnalyticsRoutes }  from './admin-analytics'
 
 export async function registerRoutes(app: FastifyInstance) {
   app.get('/health', async () => ({
@@ -43,6 +44,9 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(adminFunnelRoutes,      { prefix: '/api/admin/communications' })
   // await app.register(adminBroadcastRoutes,   { prefix: '/api/admin/broadcast' }) // TODO
   await app.register(adminBotBlockRoutes,    { prefix: '/api/admin/bot-blocks' })
+
+  // Analytics & Audit
+  await app.register(adminAnalyticsRoutes,  { prefix: '/api/admin/analytics' })
 
   // Public webhooks
   await app.register(paymentWebhookRoutes,   { prefix: '/api/payments' })
