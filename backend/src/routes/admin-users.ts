@@ -83,12 +83,25 @@ export async function adminUserRoutes(app: FastifyInstance) {
       },
     })
 
-    // Enrich with REMNAWAVE data
+    // Enrich with REMNAWAVE data + sync local status
     let rmData = null
     if (user.remnawaveUuid) {
       try {
         const { remnawave } = await import('../services/remnawave')
         rmData = await remnawave.getUserByUuid(user.remnawaveUuid)
+
+        // Sync local status silently
+        const statusMap: Record<string, string> = { ACTIVE: 'ACTIVE', DISABLED: 'INACTIVE', LIMITED: 'ACTIVE', EXPIRED: 'EXPIRED' }
+        const newStatus = statusMap[rmData.status] || 'INACTIVE'
+        const newExpire = rmData.expireAt ? new Date(rmData.expireAt) : null
+        if (newStatus !== user.subStatus || newExpire?.getTime() !== user.subExpireAt?.getTime()) {
+          await prisma.user.update({
+            where: { id },
+            data: { subStatus: newStatus as any, subExpireAt: newExpire },
+          })
+          user.subStatus = newStatus as any
+          user.subExpireAt = newExpire
+        }
       } catch {}
     }
 
