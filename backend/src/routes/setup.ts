@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '../db'
+import { loadDbSettings } from '../config'
 
 export async function setupRoutes(app: FastifyInstance) {
   const admin = { preHandler: [app.adminOnly] }
@@ -49,6 +50,7 @@ export async function setupRoutes(app: FastifyInstance) {
       })
     }
 
+    await loadDbSettings()
     return { ok: true }
   })
 
@@ -75,6 +77,7 @@ export async function setupRoutes(app: FastifyInstance) {
       update: { value: 'true' },
     })
 
+    await loadDbSettings()
     return { ok: true }
   })
 
@@ -101,6 +104,7 @@ export async function setupRoutes(app: FastifyInstance) {
       update: { value: 'true' },
     })
 
+    await loadDbSettings()
     return { ok: true }
   })
 
@@ -140,6 +144,7 @@ export async function setupRoutes(app: FastifyInstance) {
       update: { value: 'true' },
     })
 
+    await loadDbSettings()
     return { ok: true }
   })
 

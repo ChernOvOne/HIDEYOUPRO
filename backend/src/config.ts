@@ -12,7 +12,7 @@ const envSchema = z.object({
   DATABASE_URL:          z.string(),
   REDIS_URL:             z.string(),
 
-  REMNAWAVE_URL:         z.string().default('http://localhost:3000'),
+  REMNAWAVE_URL:         z.string().default(''),
   REMNAWAVE_TOKEN:       z.string().optional().default(''),
 
   TELEGRAM_BOT_TOKEN:    z.string().optional().default(''),
@@ -60,6 +60,30 @@ if (!parsed.success) {
 
 const env = parsed.data
 
+// ── DB Settings cache (loaded once at startup, refreshed periodically) ──
+let dbSettings: Record<string, string> = {}
+let dbLoaded = false
+
+/** Load settings from DB. Called on startup and every 5 min. */
+export async function loadDbSettings() {
+  try {
+    const { prisma } = await import('./db')
+    const rows = await prisma.setting.findMany()
+    dbSettings = Object.fromEntries(rows.map(r => [r.key, r.value]))
+    dbLoaded = true
+  } catch {
+    // DB may not be ready yet at first import
+  }
+}
+
+/** Get setting: env var wins, then DB, then fallback */
+function get(envVal: string | undefined | null, dbKey: string, fallback = ''): string {
+  if (envVal) return envVal
+  if (dbSettings[dbKey]) return dbSettings[dbKey]
+  return fallback
+}
+
+// ── Exported config (reads from env + DB dynamically) ──
 export const config = {
   nodeEnv:    env.NODE_ENV,
   isDev:      env.NODE_ENV === 'development',
@@ -80,46 +104,63 @@ export const config = {
   db:    { url: env.DATABASE_URL },
   redis: { url: env.REDIS_URL },
 
-  remnawave: {
-    url:        env.REMNAWAVE_URL,
-    token:      env.REMNAWAVE_TOKEN ?? '',
-    configured: !!(env.REMNAWAVE_TOKEN),
+  get remnawave() {
+    const url   = get(env.REMNAWAVE_URL, 'remnawave_url')
+    const token = get(env.REMNAWAVE_TOKEN, 'remnawave_token')
+    return { url, token, configured: !!(token && url) }
   },
 
-  telegram: {
-    botToken:      env.TELEGRAM_BOT_TOKEN ?? '',
-    botName:       env.TELEGRAM_BOT_NAME ?? '',
-    loginBotToken: env.TELEGRAM_LOGIN_BOT_TOKEN || env.TELEGRAM_BOT_TOKEN || '',
-    configured:    !!(env.TELEGRAM_BOT_TOKEN),
+  get telegram() {
+    const botToken = get(env.TELEGRAM_BOT_TOKEN, 'bot_token')
+    const botName  = get(env.TELEGRAM_BOT_NAME, 'bot_name')
+    return {
+      botToken, botName,
+      loginBotToken: env.TELEGRAM_LOGIN_BOT_TOKEN || botToken,
+      configured: !!botToken,
+    }
   },
 
-  yukassa: {
-    shopId:        env.YUKASSA_SHOP_ID,
-    secretKey:     env.YUKASSA_SECRET_KEY,
-    returnUrl:     env.YUKASSA_RETURN_URL,
-    webhookSecret: env.YUKASSA_WEBHOOK_SECRET,
-    enabled:       !!(env.YUKASSA_SHOP_ID && env.YUKASSA_SECRET_KEY),
+  get yukassa() {
+    const shopId    = get(env.YUKASSA_SHOP_ID, 'yukassa_shop_id')
+    const secretKey = get(env.YUKASSA_SECRET_KEY, 'yukassa_secret_key')
+    return {
+      shopId, secretKey,
+      returnUrl:     env.YUKASSA_RETURN_URL || dbSettings.yukassa_return_url || `${env.APP_URL}/dashboard/payment-success`,
+      webhookSecret: env.YUKASSA_WEBHOOK_SECRET,
+      enabled:       !!(shopId && secretKey),
+    }
   },
 
-  cryptopay: {
-    apiToken: env.CRYPTOPAY_API_TOKEN,
-    network:  env.CRYPTOPAY_NETWORK,
-    enabled:  !!(env.CRYPTOPAY_API_TOKEN) && env.FEATURE_CRYPTO_PAYMENTS,
+  get cryptopay() {
+    const apiToken = get(env.CRYPTOPAY_API_TOKEN, 'cryptopay_token')
+    return {
+      apiToken,
+      network: env.CRYPTOPAY_NETWORK,
+      enabled: !!apiToken && env.FEATURE_CRYPTO_PAYMENTS,
+    }
   },
 
-  referral: {
-    bonusDays:    env.REFERRAL_BONUS_DAYS,
-    minDays:      env.REFERRAL_MIN_DAYS,
-    enabled:      env.FEATURE_REFERRAL,
-    rewardType:   env.REFERRAL_REWARD_TYPE,
-    rewardAmount: env.REFERRAL_REWARD_AMOUNT,
+  get referral() {
+    return {
+      bonusDays:    Number(get(String(env.REFERRAL_BONUS_DAYS), 'referral_bonus_days', '30')),
+      minDays:      Number(get(String(env.REFERRAL_MIN_DAYS), 'referral_min_days', '30')),
+      enabled:      get(String(env.FEATURE_REFERRAL), 'referral_enabled', 'true') === 'true',
+      rewardType:   env.REFERRAL_REWARD_TYPE,
+      rewardAmount: env.REFERRAL_REWARD_AMOUNT,
+    }
   },
 
-  smtp: {
-    host: env.SMTP_HOST, port: env.SMTP_PORT,
-    user: env.SMTP_USER, pass: env.SMTP_PASS,
-    from: env.SMTP_FROM || `noreply@${env.DOMAIN}`,
-    configured: !!(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS),
+  get smtp() {
+    const host = get(env.SMTP_HOST, 'smtp_host')
+    const user = get(env.SMTP_USER, 'smtp_user')
+    const pass = get(env.SMTP_PASS, 'smtp_pass')
+    return {
+      host,
+      port: Number(get(String(env.SMTP_PORT), 'smtp_port', '587')),
+      user, pass,
+      from: get(env.SMTP_FROM, 'smtp_from', `noreply@${env.DOMAIN}`),
+      configured: !!(host && user && pass),
+    }
   },
 
   features: {

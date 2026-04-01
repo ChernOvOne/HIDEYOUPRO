@@ -3,7 +3,7 @@ import { registerPlugins } from './plugins'
 import { registerRoutes }  from './routes'
 import { setupCronJobs }   from './utils/scheduler'
 import { logger }          from './utils/logger'
-import { config }          from './config'
+import { config, loadDbSettings } from './config'
 
 const app = Fastify({
   logger:     false,
@@ -19,12 +19,21 @@ async function bootstrap() {
       catch (err: any) { err.statusCode = 400; done(err, undefined) }
     })
 
+    // Load settings from DB (tokens, URLs set via Wizard)
+    await loadDbSettings()
+    logger.info('DB settings loaded')
+
+    // Refresh DB settings every 5 minutes
+    setInterval(() => loadDbSettings().catch(() => {}), 5 * 60_000)
+
     await app.register(import('@fastify/multipart'), { limits: { fileSize: 5 * 1024 * 1024 } })
     await registerPlugins(app)
     await registerRoutes(app)
     await app.listen({ port: config.port, host: '0.0.0.0' })
     logger.info(`HIDEYOU PRO API running on port ${config.port}`)
     logger.info(`Environment: ${config.nodeEnv}`)
+    logger.info(`REMNAWAVE: ${config.remnawave.configured ? 'configured' : 'not set'}`)
+    logger.info(`Telegram: ${config.telegram.configured ? 'configured' : 'not set'}`)
     await setupCronJobs()
   } catch (err) {
     logger.error('Failed to start server:', err)
