@@ -855,235 +855,169 @@ export default function AdminImportExport() {
                 </div>
               ))}
 
-              {/* Regex extractors */}
-              <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Regex className="w-5 h-5 text-primary-600" />
-                    <h3 className="text-gray-900 font-medium text-sm">Извлечение данных (Regex)</h3>
-                  </div>
-                  <button
-                    onClick={addExtractor}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
-                  >
-                    <Zap className="w-3.5 h-3.5" />
-                    Добавить
-                  </button>
-                </div>
-
-                {extractors.length === 0 && (
-                  <p className="text-gray-400 text-sm py-2">
-                    Используйте regex для извлечения ID или email из текстовых полей
-                  </p>
-                )}
-
-                {extractors.map((ext, idx) => (
-                  <div key={idx} className="border border-gray-100 rounded-lg p-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex-1 grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-gray-500 text-xs mb-1 block">Файл</label>
-                          <select
-                            value={ext.fileId}
-                            onChange={e => updateExtractor(idx, { fileId: e.target.value })}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                          >
-                            {files.map(f => (
-                              <option key={f.id} value={f.id}>{f.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-gray-500 text-xs mb-1 block">Извлечь данные из колонки</label>
-                          <select
-                            value={ext.sourceColumn}
-                            onChange={e => updateExtractor(idx, { sourceColumn: e.target.value })}
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                          >
-                            {(files.find(f => f.id === ext.fileId)?.columns || []).map(c => (
-                              <option key={c} value={c}>{c}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                      <button onClick={() => removeExtractor(idx)} className="p-1.5 text-gray-400 hover:text-red-500 mt-5">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    {/* Regex input */}
-                    <div>
-                      <label className="text-gray-500 text-xs mb-1 block">Регулярное выражение</label>
-                      <input
-                        value={ext.regex}
-                        onChange={e => updateExtractor(idx, { regex: e.target.value })}
-                        placeholder="Например: \[ID(\d+)\]"
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white font-mono"
-                      />
-                    </div>
-
-                    {/* Presets */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {REGEX_PRESETS.map(p => (
-                        <button
-                          key={p.label}
-                          onClick={() => updateExtractor(idx, { regex: p.regex })}
-                          className="px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-600 hover:bg-primary-50 hover:text-primary-600 cursor-pointer transition-colors"
-                        >
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Target field */}
-                    <div>
-                      <label className="text-gray-500 text-xs mb-1 block">Сопоставить с полем</label>
-                      <select
-                        value={ext.targetField}
-                        onChange={e => updateExtractor(idx, { targetField: e.target.value })}
-                        className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                      >
-                        <option value="legacyId">Legacy ID</option>
-                        <option value="telegramId">Telegram ID</option>
-                        <option value="email">Email</option>
-                        <option value="externalId">Внешний ID</option>
-                        <option value="userId">ID пользователя</option>
-                      </select>
-                    </div>
-
-                    {/* Live preview */}
-                    {ext.regex && ext.extractedSamples.length > 0 && (
-                      <div className="bg-gray-50 rounded-lg p-3">
-                        <p className="text-gray-500 text-xs mb-2">Предпросмотр извлечённых значений:</p>
-                        <div className="flex flex-wrap gap-2">
-                          {ext.extractedSamples.map((v, i) => (
-                            <span key={i} className={`text-xs font-mono px-2 py-1 rounded ${
-                              v === '—' ? 'bg-red-50 text-red-400' : 'bg-emerald-50 text-emerald-700'
-                            }`}>
-                              {v}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Cross-file linking */}
+              {/* ═══ Unified: Связь между файлами + Regex ═══ */}
               {files.length >= 2 && (
-                <div className="bg-white rounded-xl border border-gray-100 p-5 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Link2 className="w-5 h-5 text-primary-600" />
-                      <h3 className="text-gray-900 font-medium text-sm">Связать файлы</h3>
+                <div className="bg-white rounded-xl border border-amber-200 p-5 space-y-5">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Link2 className="w-5 h-5 text-amber-600" />
+                      <h3 className="text-gray-900 font-medium">Связь между файлами</h3>
                     </div>
-                    <button
-                      onClick={addCrossLink}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
-                    >
-                      <Link2 className="w-3.5 h-3.5" />
-                      Добавить связь
-                    </button>
+                    <div className="p-3 rounded-lg bg-amber-50 text-amber-800 text-xs space-y-2">
+                      <p className="font-medium">Зачем это нужно?</p>
+                      <p>Если у вас два файла (например, Пользователи и Платежи), нужно указать как их связать. Обычно платёж содержит ID пользователя в каком-то поле.</p>
+                      <p><b>Пример:</b> В файле платежей колонка "Описание" содержит текст <code className="bg-amber-100 px-1 rounded">[ID14128800] Иван</code>. Число 14128800 — это ID пользователя из файла контактов. Regex <code className="bg-amber-100 px-1 rounded">\[ID(\d+)\]</code> извлечёт это число.</p>
+                    </div>
                   </div>
 
                   {crossLinks.length === 0 && (
-                    <p className="text-gray-400 text-sm py-2">
-                      Свяжите файлы между собой для автоматической привязки записей
-                    </p>
+                    <div className="text-center py-4">
+                      <p className="text-gray-400 text-sm mb-3">Связи не настроены — платежи не будут привязаны к пользователям</p>
+                      <button onClick={addCrossLink}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 transition-colors">
+                        <Link2 className="w-4 h-4" /> Настроить связь
+                      </button>
+                    </div>
                   )}
 
                   {crossLinks.map(link => {
                     const srcFile = files.find(f => f.id === link.sourceFileId)
                     const tgtFile = files.find(f => f.id === link.targetFileId)
+
+                    // Live preview: extract values from source using regex
+                    const srcSamples = srcFile?.sampleData?.slice(0, 5).map(r => r[link.sourceField] || '') || []
+                    const extractedSamples = link.sourceRegex ? tryExtract(srcSamples, link.sourceRegex) : srcSamples
+                    const tgtSamples = tgtFile?.sampleData?.slice(0, 5).map(r => r[link.targetField] || '') || []
+                    const matchCount = extractedSamples.filter((v, i) => v !== '—' && tgtSamples.some(t => t === v)).length
+
                     return (
-                      <div key={link.id} className="border border-gray-100 rounded-lg p-4 space-y-3">
-                        <div className="grid grid-cols-[1fr_auto_1fr] gap-3 items-end">
-                          {/* Source */}
-                          <div className="space-y-2">
-                            <label className="text-gray-500 text-xs block">Источник</label>
-                            <select
-                              value={link.sourceFileId}
-                              onChange={e => updateCrossLink(link.id, { sourceFileId: e.target.value })}
-                              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                            >
-                              {files.map(f => (
-                                <option key={f.id} value={f.id}>{f.name} ({FILE_TYPE_LABELS[f.type]})</option>
-                              ))}
+                      <div key={link.id} className="border border-gray-200 rounded-xl p-5 space-y-4 bg-gray-50/50">
+                        {/* Step 1: Source file + column */}
+                        <div>
+                          <p className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold flex items-center justify-center">1</span>
+                            Откуда берём ID?
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <select value={link.sourceFileId} onChange={e => updateCrossLink(link.id, { sourceFileId: e.target.value })}
+                              className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+                              {files.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                             </select>
-                            <select
-                              value={link.sourceField}
-                              onChange={e => updateCrossLink(link.id, { sourceField: e.target.value })}
-                              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                            >
-                              {(srcFile?.columns || []).map(c => (
-                                <option key={c} value={c}>{c}</option>
-                              ))}
+                            <select value={link.sourceField} onChange={e => updateCrossLink(link.id, { sourceField: e.target.value })}
+                              className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+                              {(srcFile?.columns || []).map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                           </div>
-
-                          {/* Arrow */}
-                          <div className="flex items-center justify-center pb-2">
-                            <ArrowRight className="w-5 h-5 text-gray-300" />
-                          </div>
-
-                          {/* Target */}
-                          <div className="space-y-2">
-                            <label className="text-gray-500 text-xs block">Цель</label>
-                            <select
-                              value={link.targetFileId}
-                              onChange={e => updateCrossLink(link.id, { targetFileId: e.target.value })}
-                              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                            >
-                              {files.map(f => (
-                                <option key={f.id} value={f.id}>{f.name} ({FILE_TYPE_LABELS[f.type]})</option>
+                          {srcSamples.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              <span className="text-[10px] text-gray-400">Примеры:</span>
+                              {srcSamples.slice(0, 3).map((v, i) => (
+                                <span key={i} className="text-[11px] font-mono bg-white border border-gray-200 px-1.5 py-0.5 rounded truncate max-w-[180px]">{truncate(v || '—', 30)}</span>
                               ))}
-                            </select>
-                            <select
-                              value={link.targetField}
-                              onChange={e => updateCrossLink(link.id, { targetField: e.target.value })}
-                              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
-                            >
-                              {(tgtFile?.columns || []).map(c => (
-                                <option key={c} value={c}>{c}</option>
-                              ))}
-                            </select>
-                          </div>
+                            </div>
+                          )}
                         </div>
 
-                        {/* Regex for link */}
+                        {/* Step 2: Regex */}
                         <div>
-                          <label className="text-gray-500 text-xs mb-1 block">Regex для извлечения (необязательно)</label>
-                          <input
-                            value={link.sourceRegex}
-                            onChange={e => updateCrossLink(link.id, { sourceRegex: e.target.value })}
-                            placeholder="Например: \[ID(\d+)\]"
-                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white font-mono"
-                          />
+                          <p className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold flex items-center justify-center">2</span>
+                            Нужно извлечь ID из текста? (если ID спрятан внутри строки)
+                          </p>
+                          <input value={link.sourceRegex} onChange={e => updateCrossLink(link.id, { sourceRegex: e.target.value })}
+                            placeholder="Оставьте пустым если колонка уже содержит чистый ID"
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white font-mono" />
+
                           <div className="flex flex-wrap gap-1.5 mt-2">
+                            <span className="text-[10px] text-gray-400 py-1">Шаблоны:</span>
                             {REGEX_PRESETS.map(p => (
-                              <button
-                                key={p.label}
-                                onClick={() => updateCrossLink(link.id, { sourceRegex: p.regex })}
-                                className="px-2.5 py-1 rounded-full text-xs bg-gray-100 text-gray-600 hover:bg-primary-50 hover:text-primary-600 cursor-pointer transition-colors"
-                              >
+                              <button key={p.label} onClick={() => updateCrossLink(link.id, { sourceRegex: p.regex })}
+                                className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                                  link.sourceRegex === p.regex
+                                    ? 'bg-amber-600 text-white'
+                                    : 'bg-white border border-gray-200 text-gray-600 hover:border-amber-300 hover:text-amber-700'
+                                }`}>
                                 {p.label}
                               </button>
                             ))}
                           </div>
+
+                          {/* Live regex preview */}
+                          {link.sourceRegex && (
+                            <div className="mt-2 p-2.5 rounded-lg bg-white border border-gray-200">
+                              <p className="text-[10px] text-gray-400 mb-1.5">Результат извлечения:</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {srcSamples.slice(0, 5).map((v, i) => {
+                                  const extracted = extractedSamples[i]
+                                  return (
+                                    <div key={i} className="text-[11px] space-y-0.5">
+                                      <div className="font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded truncate max-w-[200px]">{truncate(v || '—', 28)}</div>
+                                      <div className="text-center text-gray-300">↓</div>
+                                      <div className={`font-mono font-medium px-1.5 py-0.5 rounded ${
+                                        extracted === '—' ? 'bg-red-50 text-red-400' : 'bg-emerald-50 text-emerald-700'
+                                      }`}>{extracted}</div>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
-                        <div className="flex justify-end">
-                          <button
-                            onClick={() => removeCrossLink(link.id)}
-                            className="text-xs text-red-500 hover:text-red-700"
-                          >
-                            Удалить связь
-                          </button>
+                        {/* Step 3: Target */}
+                        <div>
+                          <p className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-1.5">
+                            <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold flex items-center justify-center">3</span>
+                            Где искать совпадение?
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <select value={link.targetFileId} onChange={e => updateCrossLink(link.id, { targetFileId: e.target.value })}
+                              className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+                              {files.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                            </select>
+                            <select value={link.targetField} onChange={e => updateCrossLink(link.id, { targetField: e.target.value })}
+                              className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white">
+                              {(tgtFile?.columns || []).map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                          </div>
+                          {tgtSamples.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              <span className="text-[10px] text-gray-400">Примеры:</span>
+                              {tgtSamples.slice(0, 3).map((v, i) => (
+                                <span key={i} className="text-[11px] font-mono bg-white border border-gray-200 px-1.5 py-0.5 rounded truncate max-w-[120px]">{truncate(v || '—', 16)}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Match indicator */}
+                        <div className={`flex items-center justify-between p-3 rounded-lg ${
+                          matchCount > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-100'
+                        }`}>
+                          <div className="flex items-center gap-2">
+                            {matchCount > 0
+                              ? <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                              : <AlertCircle className="w-4 h-4 text-gray-400" />
+                            }
+                            <span className={`text-xs font-medium ${matchCount > 0 ? 'text-emerald-700' : 'text-gray-500'}`}>
+                              {matchCount > 0
+                                ? `Найдено совпадений в примерах: ${matchCount} из ${extractedSamples.filter(v => v !== '—').length}`
+                                : 'Совпадений в примерах не найдено (проверьте настройки)'
+                              }
+                            </span>
+                          </div>
+                          <button onClick={() => removeCrossLink(link.id)} className="text-xs text-red-400 hover:text-red-600">Удалить</button>
                         </div>
                       </div>
                     )
                   })}
+
+                  {crossLinks.length > 0 && (
+                    <button onClick={addCrossLink}
+                      className="w-full py-2 rounded-lg border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:border-amber-300 hover:text-amber-600 transition-colors">
+                      + Добавить ещё связь
+                    </button>
+                  )}
                 </div>
               )}
 
