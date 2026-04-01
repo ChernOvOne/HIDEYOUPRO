@@ -26,6 +26,7 @@ interface Payment {
   purpose?: string
   description?: string
   createdAt: string
+  paidAt?: string
   confirmedAt?: string
   meta?: string
   user: PaymentUser
@@ -307,11 +308,16 @@ export default function PaymentsPage() {
                           <td className="px-4 py-3 font-medium text-gray-900 tabular-nums whitespace-nowrap">
                             {formatAmount(p.amount, p.currency)}
                           </td>
-                          <td className="px-4 py-3 text-gray-500 text-xs">{p.tariff?.name || p.description || '--'}</td>
+                          <td className="px-4 py-3 text-gray-500 text-xs">{p.tariff?.name || '—'}</td>
                           <td className="px-4 py-3">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-50 text-gray-600 border border-gray-200">
-                              {PROVIDER_LABEL[p.provider] || p.provider}
-                            </span>
+                            <div>
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-50 text-gray-600 border border-gray-200">
+                                {PROVIDER_LABEL[p.provider] || p.provider}
+                              </span>
+                              {p.description && (
+                                <p className="text-[10px] text-gray-400 mt-0.5 truncate max-w-[120px]">{p.description.split(' · ')[0]}</p>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${STATUS_BADGE[p.status]?.cls || 'bg-gray-50 text-gray-600'}`}>
@@ -479,9 +485,10 @@ function DetailPanel({ payment: p, onClose }: { payment: Payment; onClose: () =>
 
         <DetailRow label="Сумма" value={formatAmount(p.amount, p.currency)} bold />
         {p.tariff?.name && <DetailRow label="Тариф" value={p.tariff.name} />}
+        {p.description && <DetailRow label="Метод / Описание" value={p.description} />}
         {p.purpose && <DetailRow label="Цель" value={p.purpose} />}
         <DetailRow label="Создан" value={`${fmtDate(p.createdAt)} ${fmtTime(p.createdAt)}`} />
-        {p.confirmedAt && <DetailRow label="Подтверждён" value={`${fmtDate(p.confirmedAt)} ${fmtTime(p.confirmedAt)}`} />}
+        {p.paidAt && <DetailRow label="Оплачен" value={`${fmtDate(p.paidAt)} ${fmtTime(p.paidAt)}`} />}
 
         {/* Promo from meta */}
         {parsedMeta?.promoCode && (

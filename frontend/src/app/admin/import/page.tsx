@@ -380,15 +380,18 @@ export default function AdminImportExport() {
     setPreviewing(true)
     setPreview(null)
     try {
+      // Auto-save mapping before preview
+      await saveMapping()
+
       const res = await apiFetch(`/api/admin/data-import/sessions/${sessionId}/preview`, {
         method: 'POST',
       })
-      if (!res.ok) throw new Error('Ошибка предварительного просмотра')
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Ошибка предварительного просмотра')
       setPreview(data)
       toast.success('Предварительный просмотр готов')
     } catch (err: any) {
-      toast.error(err.message)
+      toast.error(err.message || 'Ошибка')
     } finally {
       setPreviewing(false)
     }
