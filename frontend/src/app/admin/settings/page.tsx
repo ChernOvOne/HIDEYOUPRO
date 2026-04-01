@@ -199,6 +199,12 @@ export default function SettingsPage() {
               <>
                 <SectionTitle>Личный кабинет</SectionTitle>
                 <p className="text-xs text-gray-400 mb-3">Настройки внешнего вида личного кабинета пользователя.</p>
+                <SectionTitle>Домены и URL</SectionTitle>
+                <Field label="LK домен" value={settings.lk_domain} onChange={v => upd('lk_domain', v)} placeholder="lk.example.com" hint="Домен личного кабинета пользователя" />
+                <Field label="LK URL" value={settings.lk_url} onChange={v => upd('lk_url', v)} placeholder="https://lk.example.com" hint="Автоматически генерируется из домена" />
+                <Field label="Webhook домен" value={settings.webhook_domain} onChange={v => upd('webhook_domain', v)} placeholder="api.example.com" hint="Домен для API и вебхуков" />
+                <Field label="MiniApp URL" value={settings.miniapp_url} onChange={v => upd('miniapp_url', v)} placeholder="https://miniapp.example.com" hint="URL Telegram MiniApp" />
+                <SectionTitle>Брендинг</SectionTitle>
                 <Field label="Логотип URL" value={settings.lk_logo_url} onChange={v => upd('lk_logo_url', v)} placeholder="https://example.com/logo.png" hint="URL логотипа для шапки ЛК" />
                 <Field label="Favicon URL" value={settings.lk_favicon_url} onChange={v => upd('lk_favicon_url', v)} placeholder="https://example.com/favicon.ico" />
                 <SectionTitle>Цвета</SectionTitle>

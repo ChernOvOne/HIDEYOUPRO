@@ -37,20 +37,20 @@ interface BotSettings {
 
 const DEFAULTS: BotSettings = {
   bot_token: '',
-  bot_start_text: 'Welcome! I am the HIDEYOU VPN bot.',
-  bot_subscription_active: 'Your subscription is active.',
-  bot_subscription_inactive: 'You have no active subscription.',
-  bot_tariff_header: 'Choose a plan:',
-  bot_promo_prompt: 'Enter a promo code:',
-  bot_promo_success: 'Promo code activated!',
-  bot_btn_subscription: 'Subscription',
-  bot_btn_tariffs: 'Plans',
-  bot_btn_referral: 'Referrals',
-  bot_btn_balance: 'Balance',
-  bot_btn_promo: 'Promo code',
-  bot_btn_devices: 'Devices',
-  bot_btn_instructions: 'Instructions',
-  bot_btn_open_lk: 'Open Dashboard',
+  bot_start_text: 'Добро пожаловать! Я бот HIDEYOU VPN.',
+  bot_subscription_active: 'Ваша подписка активна.',
+  bot_subscription_inactive: 'У вас нет активной подписки.',
+  bot_tariff_header: 'Выберите тариф:',
+  bot_promo_prompt: 'Введите промокод:',
+  bot_promo_success: 'Промокод активирован!',
+  bot_btn_subscription: 'Подписка',
+  bot_btn_tariffs: 'Тарифы',
+  bot_btn_referral: 'Рефералы',
+  bot_btn_balance: 'Баланс',
+  bot_btn_promo: 'Промокод',
+  bot_btn_devices: 'Устройства',
+  bot_btn_instructions: 'Инструкции',
+  bot_btn_open_lk: 'Открыть ЛК',
   bot_support_url: '',
   bot_channel_url: '',
   bot_feature_promo: 'true',
@@ -79,50 +79,50 @@ interface Section {
 
 const SECTIONS: Section[] = [
   {
-    id: 'token', icon: Settings, title: 'Bot Token', description: 'Telegram Bot API token',
+    id: 'token', icon: Settings, title: 'Токен бота', description: 'Telegram Bot API токен',
     fields: [
-      { key: 'bot_token', label: 'Bot Token', type: 'token' },
+      { key: 'bot_token', label: 'Токен бота', type: 'token' },
     ],
   },
   {
-    id: 'messages', icon: MessageSquare, title: 'Message Texts', description: 'Customize bot messages sent to users',
+    id: 'messages', icon: MessageSquare, title: 'Тексты сообщений', description: 'Настройте сообщения бота для пользователей',
     fields: [
-      { key: 'bot_start_text', label: 'Welcome message', type: 'textarea', placeholder: 'Welcome text when user starts the bot...' },
-      { key: 'bot_subscription_active', label: 'Subscription active', type: 'textarea', placeholder: 'Text for active subscription...' },
-      { key: 'bot_subscription_inactive', label: 'No subscription', type: 'textarea', placeholder: 'Text when no active subscription...' },
-      { key: 'bot_tariff_header', label: 'Tariff header', type: 'textarea', placeholder: 'Header for tariff list...' },
-      { key: 'bot_promo_prompt', label: 'Promo code prompt', type: 'textarea', placeholder: 'Text asking for promo code...' },
-      { key: 'bot_promo_success', label: 'Promo code success', type: 'textarea', placeholder: 'Success message after promo code...' },
+      { key: 'bot_start_text', label: 'Приветственное сообщение', type: 'textarea', placeholder: 'Текст при запуске бота...' },
+      { key: 'bot_subscription_active', label: 'Подписка активна', type: 'textarea', placeholder: 'Текст при активной подписке...' },
+      { key: 'bot_subscription_inactive', label: 'Нет подписки', type: 'textarea', placeholder: 'Текст без активной подписки...' },
+      { key: 'bot_tariff_header', label: 'Заголовок тарифов', type: 'textarea', placeholder: 'Заголовок списка тарифов...' },
+      { key: 'bot_promo_prompt', label: 'Запрос промокода', type: 'textarea', placeholder: 'Текст запроса промокода...' },
+      { key: 'bot_promo_success', label: 'Промокод применён', type: 'textarea', placeholder: 'Сообщение после применения промокода...' },
     ],
   },
   {
-    id: 'buttons', icon: Mouse, title: 'Menu Buttons', description: 'Customize main menu button labels',
+    id: 'buttons', icon: Mouse, title: 'Кнопки меню', description: 'Настройте надписи кнопок главного меню',
     fields: [
-      { key: 'bot_btn_subscription', label: 'Subscription', type: 'text', placeholder: 'Subscription' },
-      { key: 'bot_btn_tariffs', label: 'Plans', type: 'text', placeholder: 'Plans' },
-      { key: 'bot_btn_referral', label: 'Referrals', type: 'text', placeholder: 'Referrals' },
-      { key: 'bot_btn_balance', label: 'Balance', type: 'text', placeholder: 'Balance' },
-      { key: 'bot_btn_promo', label: 'Promo code', type: 'text', placeholder: 'Promo code' },
-      { key: 'bot_btn_devices', label: 'Devices', type: 'text', placeholder: 'Devices' },
-      { key: 'bot_btn_instructions', label: 'Instructions', type: 'text', placeholder: 'Instructions' },
-      { key: 'bot_btn_open_lk', label: 'Open Dashboard', type: 'text', placeholder: 'Open Dashboard' },
+      { key: 'bot_btn_subscription', label: 'Подписка', type: 'text', placeholder: 'Подписка' },
+      { key: 'bot_btn_tariffs', label: 'Тарифы', type: 'text', placeholder: 'Тарифы' },
+      { key: 'bot_btn_referral', label: 'Рефералы', type: 'text', placeholder: 'Рефералы' },
+      { key: 'bot_btn_balance', label: 'Баланс', type: 'text', placeholder: 'Баланс' },
+      { key: 'bot_btn_promo', label: 'Промокод', type: 'text', placeholder: 'Промокод' },
+      { key: 'bot_btn_devices', label: 'Устройства', type: 'text', placeholder: 'Устройства' },
+      { key: 'bot_btn_instructions', label: 'Инструкции', type: 'text', placeholder: 'Инструкции' },
+      { key: 'bot_btn_open_lk', label: 'Открыть ЛК', type: 'text', placeholder: 'Открыть ЛК' },
     ],
   },
   {
-    id: 'links', icon: Link2, title: 'Links', description: 'Support and channel URLs',
+    id: 'links', icon: Link2, title: 'Ссылки', description: 'URL поддержки и канала',
     fields: [
-      { key: 'bot_support_url', label: 'Support link', type: 'url', placeholder: 'https://t.me/support' },
-      { key: 'bot_channel_url', label: 'Telegram channel', type: 'url', placeholder: 'https://t.me/channel' },
+      { key: 'bot_support_url', label: 'Ссылка на поддержку', type: 'url', placeholder: 'https://t.me/support' },
+      { key: 'bot_channel_url', label: 'Telegram канал', type: 'url', placeholder: 'https://t.me/channel' },
     ],
   },
   {
-    id: 'toggles', icon: ToggleLeft, title: 'Feature Toggles', description: 'Enable or disable bot features',
+    id: 'toggles', icon: ToggleLeft, title: 'Переключатели функций', description: 'Включение/отключение функций бота',
     fields: [
-      { key: 'bot_feature_referrals', label: 'Referrals', type: 'toggle' },
-      { key: 'bot_feature_promo', label: 'Promo codes', type: 'toggle' },
-      { key: 'bot_feature_devices', label: 'Devices', type: 'toggle' },
-      { key: 'bot_feature_instructions', label: 'Instructions', type: 'toggle' },
-      { key: 'bot_feature_balance', label: 'Balance', type: 'toggle' },
+      { key: 'bot_feature_referrals', label: 'Рефералы', type: 'toggle' },
+      { key: 'bot_feature_promo', label: 'Промокоды', type: 'toggle' },
+      { key: 'bot_feature_devices', label: 'Устройства', type: 'toggle' },
+      { key: 'bot_feature_instructions', label: 'Инструкции', type: 'toggle' },
+      { key: 'bot_feature_balance', label: 'Баланс', type: 'toggle' },
     ],
   },
 ]
@@ -176,10 +176,10 @@ export default function BotSettingsPage() {
         body: JSON.stringify(settings),
       })
       if (!res.ok) throw new Error()
-      toast.success('Bot settings saved')
+      toast.success('Настройки бота сохранены')
       setDirty(false)
     } catch {
-      toast.error('Failed to save settings')
+      toast.error('Ошибка сохранения настроек')
     } finally {
       setSaving(false)
     }
@@ -215,8 +215,8 @@ export default function BotSettingsPage() {
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Bot Settings</h1>
-          <p className="page-subtitle">Messages, buttons, and feature toggles</p>
+          <h1 className="page-title">Настройки бота</h1>
+          <p className="page-subtitle">Сообщения, кнопки и переключатели функций</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -224,7 +224,7 @@ export default function BotSettingsPage() {
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
-            Reset
+            Сбросить
           </button>
           <button
             onClick={save}
@@ -232,7 +232,7 @@ export default function BotSettingsPage() {
             className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save
+            Сохранить
           </button>
         </div>
       </div>

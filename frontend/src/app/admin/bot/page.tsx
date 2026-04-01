@@ -99,7 +99,7 @@ export default function AdminBotChats() {
       setChats(data.chats)
       setChatsTotal(data.total)
     } catch {
-      toast.error('Failed to load chats')
+      toast.error('Ошибка загрузки чатов')
     } finally {
       setChatsLoading(false)
     }
@@ -127,7 +127,7 @@ export default function AdminBotChats() {
       setMsgsTotal(data.total)
       setMsgsPage(pg)
     } catch {
-      toast.error('Failed to load messages')
+      toast.error('Ошибка загрузки сообщений')
     } finally {
       setMsgsLoading(false)
     }
@@ -164,7 +164,7 @@ export default function AdminBotChats() {
       await loadMessages(activeUserId, 1)
       loadChats()
     } catch {
-      toast.error('Failed to send message')
+      toast.error('Ошибка отправки сообщения')
     } finally {
       setSending(false)
     }
@@ -198,8 +198,8 @@ export default function AdminBotChats() {
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Bot Chat History</h1>
-          <p className="page-subtitle">{chatsTotal} conversations</p>
+          <h1 className="page-title">История чатов бота</h1>
+          <p className="page-subtitle">{chatsTotal} диалогов</p>
         </div>
       </div>
 
@@ -214,7 +214,7 @@ export default function AdminBotChats() {
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   className="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-300"
-                  placeholder="Search users..."
+                  placeholder="Поиск пользователей..."
                   value={search}
                   onChange={e => onSearchChange(e.target.value)}
                 />
@@ -230,7 +230,7 @@ export default function AdminBotChats() {
               ) : chats.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-gray-400">
                   <MessageCircle className="w-8 h-8 mb-2" />
-                  <p className="text-sm">No chats found</p>
+                  <p className="text-sm">Чаты не найдены</p>
                 </div>
               ) : (
                 chats.map(item => {
@@ -271,7 +271,7 @@ export default function AdminBotChats() {
                   onClick={() => { const next = chatsPage + 1; setChatsPage(next); loadChats(next, search) }}
                   className="w-full text-center py-2.5 text-xs text-primary-600 hover:bg-primary-50 transition-colors"
                 >
-                  Load more...
+                  Загрузить ещё...
                 </button>
               )}
             </div>
@@ -298,7 +298,7 @@ export default function AdminBotChats() {
                         onClick={() => setMobileProfileOpen(true)}>
                       {displayName(activeUser)}
                     </h2>
-                    <p className="text-xs text-gray-400">{msgsTotal} messages</p>
+                    <p className="text-xs text-gray-400">{msgsTotal} сообщений</p>
                   </div>
                   <button className="md:hidden p-1.5 rounded-lg text-gray-400 hover:bg-gray-50"
                           onClick={() => setMobileProfileOpen(o => !o)}>
@@ -315,7 +315,7 @@ export default function AdminBotChats() {
                         disabled={msgsLoading}
                         className="text-xs px-3 py-1 rounded-lg text-primary-600 bg-primary-50 hover:bg-primary-100 transition-colors"
                       >
-                        {msgsLoading ? 'Loading...' : 'Load earlier'}
+                        {msgsLoading ? 'Загрузка...' : 'Загрузить ранние'}
                       </button>
                     </div>
                   )}
@@ -327,7 +327,7 @@ export default function AdminBotChats() {
                   ) : messages.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-full text-gray-400">
                       <MessageCircle className="w-10 h-10 mb-2" />
-                      <p className="text-sm">No messages</p>
+                      <p className="text-sm">Нет сообщений</p>
                     </div>
                   ) : (
                     messages.map(msg => {
@@ -359,7 +359,7 @@ export default function AdminBotChats() {
                 <div className="flex items-center gap-2 px-4 py-3 border-t border-gray-100 flex-shrink-0 bg-white">
                   <input
                     className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-300"
-                    placeholder="Type a message..."
+                    placeholder="Введите сообщение..."
                     value={draft}
                     onChange={e => setDraft(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() } }}
@@ -379,8 +379,8 @@ export default function AdminBotChats() {
                 <div className="w-16 h-16 rounded-xl bg-primary-50 flex items-center justify-center mb-3">
                   <MessageCircle className="w-7 h-7 text-primary-400" />
                 </div>
-                <h3 className="text-base font-semibold text-gray-900 mb-1">Select a chat</h3>
-                <p className="text-sm">Choose a user from the left to view their history</p>
+                <h3 className="text-base font-semibold text-gray-900 mb-1">Выберите чат</h3>
+                <p className="text-sm">Выберите пользователя слева для просмотра истории</p>
               </div>
             )}
           </div>
@@ -396,7 +396,7 @@ export default function AdminBotChats() {
                   <div className="absolute inset-0 bg-black/40" onClick={() => setMobileProfileOpen(false)} />
                   <div className="absolute right-0 top-0 h-full w-[280px] max-w-[85vw] overflow-y-auto bg-white border-l border-gray-100">
                     <div className="flex items-center justify-between p-3 border-b border-gray-100">
-                      <span className="text-sm font-semibold text-gray-900">Profile</span>
+                      <span className="text-sm font-semibold text-gray-900">Профиль</span>
                       <button onClick={() => setMobileProfileOpen(false)} className="p-1 text-gray-400 hover:text-gray-600">
                         <X className="w-4 h-4" />
                       </button>
@@ -435,9 +435,9 @@ function ProfilePanel({ user }: { user: ChatUser }) {
         {user.email && (
           <ProfileRow icon={<MessageCircle className="w-3.5 h-3.5" />} label="Email" value={user.email} />
         )}
-        <ProfileRow icon={<Wallet className="w-3.5 h-3.5" />} label="Balance" value={user.balance != null ? `${user.balance} RUB` : '---'} />
-        <ProfileRow icon={<Gift className="w-3.5 h-3.5" />} label="Bonus days" value={user.bonusDays != null ? `${user.bonusDays}` : '---'} />
-        <ProfileRow icon={<Calendar className="w-3.5 h-3.5" />} label="Registered" value={fmtFull(user.createdAt)} />
+        <ProfileRow icon={<Wallet className="w-3.5 h-3.5" />} label="Баланс" value={user.balance != null ? `${user.balance} RUB` : '---'} />
+        <ProfileRow icon={<Gift className="w-3.5 h-3.5" />} label="Бонусные дни" value={user.bonusDays != null ? `${user.bonusDays}` : '---'} />
+        <ProfileRow icon={<Calendar className="w-3.5 h-3.5" />} label="Регистрация" value={fmtFull(user.createdAt)} />
       </div>
 
       <Link
@@ -445,7 +445,7 @@ function ProfilePanel({ user }: { user: ChatUser }) {
         className="flex items-center justify-center gap-2 w-full py-2 rounded-lg text-sm font-medium bg-primary-50 text-primary-600 border border-primary-100 hover:bg-primary-100 transition-colors"
       >
         <ExternalLink className="w-3.5 h-3.5" />
-        Full profile
+        Полный профиль
       </Link>
     </div>
   )

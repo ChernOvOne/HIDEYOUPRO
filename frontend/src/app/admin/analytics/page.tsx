@@ -291,8 +291,8 @@ export default function AnalyticsPage() {
                 {Array.isArray(rmData.nodes) && rmData.nodes.length > 0 ? rmData.nodes.map((n: any, i: number) => (
                   <div key={i} className="flex items-center gap-2 text-sm">
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${n.isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-                    <span className="flex-1 text-gray-700">{n.name || `Node ${i + 1}`}</span>
-                    <span className="text-xs text-gray-400">{n.isConnected ? 'online' : 'offline'}</span>
+                    <span className="flex-1 text-gray-700">{n.name || `Узел ${i + 1}`}</span>
+                    <span className="text-xs text-gray-400">{n.isConnected ? 'в сети' : 'не в сети'}</span>
                   </div>
                 )) : <p className="text-sm text-gray-400">Нет узлов</p>}
               </div>
@@ -300,7 +300,7 @@ export default function AnalyticsPage() {
               <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-100">
                 <div className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
                 <div>
-                  <p className="text-sm text-red-700 font-medium">Panel недоступен</p>
+                  <p className="text-sm text-red-700 font-medium">Панель недоступна</p>
                   <p className="text-xs text-red-400 mt-0.5">Проверьте REMNAWAVE_URL и REMNAWAVE_TOKEN</p>
                 </div>
               </div>

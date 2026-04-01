@@ -2,27 +2,48 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Building2, Wifi, MessageCircle, CreditCard, CheckCircle2, ChevronRight, Loader2, SkipForward } from 'lucide-react'
+import {
+  Building2, Wifi, MessageCircle, CreditCard, CheckCircle2, ChevronRight,
+  Loader2, SkipForward, Globe, Mail, Users, DollarSign, ChevronLeft,
+} from 'lucide-react'
 import { api } from '@/lib/api'
 import toast from 'react-hot-toast'
 
 const STEPS = [
-  { id: 'company',   icon: Building2,     title: 'Компания',     desc: 'Название, валюта, таймзона' },
-  { id: 'remnawave', icon: Wifi,           title: 'REMNAWAVE',    desc: 'Подключение VPN-панели' },
-  { id: 'telegram',  icon: MessageCircle, title: 'Telegram Bot', desc: 'Токен и username бота' },
-  { id: 'payments',  icon: CreditCard,    title: 'Платежи',      desc: 'ЮKassa, CryptoPay' },
+  { id: 'company',   icon: Building2,      title: 'Компания',        desc: 'Название, валюта, поддержка' },
+  { id: 'domains',   icon: Globe,          title: 'Домены',          desc: 'ЛК, MiniApp, Webhook' },
+  { id: 'remnawave', icon: Wifi,           title: 'REMNAWAVE',       desc: 'Подключение VPN-панели' },
+  { id: 'telegram',  icon: MessageCircle,  title: 'Telegram бот',    desc: 'Токен и username бота' },
+  { id: 'payments',  icon: CreditCard,     title: 'Платежи',         desc: 'ЮKassa, CryptoPay, Stars' },
+  { id: 'email',     icon: Mail,           title: 'Email (SMTP)',    desc: 'Рассылки и уведомления' },
+  { id: 'referral',  icon: Users,          title: 'Рефералы',        desc: 'Бонусы за приглашения' },
+  { id: 'accounting',icon: DollarSign,     title: 'Бухгалтерия',     desc: 'Категории расходов/доходов' },
 ]
+
+const SKIP_ALLOWED = new Set(['domains', 'remnawave', 'telegram', 'payments', 'email', 'referral', 'accounting'])
 
 export default function SetupPage() {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState<Record<string, string>>({
+    // Компания
     companyName: '', currency: 'RUB', timezone: 'Europe/Moscow',
     supportUrl: '', tgChannel: '',
+    // Домены
+    lkDomain: '', lkUrl: '', webhookDomain: '', miniappUrl: '',
+    // REMNAWAVE
     remnawaveUrl: '', remnawaveToken: '',
+    // Telegram
     botToken: '', botName: '',
-    yukassaShopId: '', yukassaSecretKey: '', cryptopayToken: '',
+    // Платежи
+    yukassaShopId: '', yukassaSecretKey: '', cryptopayToken: '', starsEnabled: 'false',
+    // Email
+    smtpHost: '', smtpPort: '587', smtpUser: '', smtpPass: '', smtpFrom: '',
+    // Рефералы
+    referralEnabled: 'true', referralBonusDays: '30', referralMinDays: '30',
+    // Бухгалтерия
+    defaultCategories: 'true',
   })
 
   useEffect(() => {
@@ -34,31 +55,75 @@ export default function SetupPage() {
   const saveStep = async () => {
     setLoading(true)
     try {
-      switch (step) {
-        case 0:
+      const s = STEPS[step].id
+      switch (s) {
+        case 'company':
           await api.setupCompany({
             companyName: form.companyName, currency: form.currency,
             timezone: form.timezone, supportUrl: form.supportUrl, tgChannel: form.tgChannel,
           })
           break
-        case 1:
-          if (form.remnawaveUrl && form.remnawaveToken) {
+        case 'domains':
+          await api.updateSettings({
+            lk_domain: form.lkDomain, lk_url: form.lkUrl,
+            webhook_domain: form.webhookDomain, miniapp_url: form.miniappUrl,
+          })
+          break
+        case 'remnawave':
+          if (form.remnawaveUrl && form.remnawaveToken)
             await api.setupRemnawave({ url: form.remnawaveUrl, token: form.remnawaveToken })
-          }
           break
-        case 2:
-          if (form.botToken && form.botName) {
+        case 'telegram':
+          if (form.botToken && form.botName)
             await api.setupTelegram({ botToken: form.botToken, botName: form.botName })
-          }
           break
-        case 3:
+        case 'payments':
           await api.setupPayments({
             yukassaShopId: form.yukassaShopId || undefined,
             yukassaSecretKey: form.yukassaSecretKey || undefined,
             cryptopayToken: form.cryptopayToken || undefined,
+            starsEnabled: form.starsEnabled,
           })
           break
+        case 'email':
+          await api.updateSettings({
+            smtp_host: form.smtpHost, smtp_port: form.smtpPort,
+            smtp_user: form.smtpUser, smtp_pass: form.smtpPass, smtp_from: form.smtpFrom,
+          })
+          break
+        case 'referral':
+          await api.updateSettings({
+            referral_enabled: form.referralEnabled,
+            referral_bonus_days: form.referralBonusDays,
+            referral_min_days: form.referralMinDays,
+          })
+          break
+        case 'accounting':
+          if (form.defaultCategories === 'true') {
+            // Создаём стандартные категории
+            const cats = [
+              { name: 'Серверы', type: 'EXPENSE', color: '#EF4444' },
+              { name: 'Реклама', type: 'EXPENSE', color: '#F59E0B' },
+              { name: 'Зарплаты', type: 'EXPENSE', color: '#8B5CF6' },
+              { name: 'Подписки (сервисы)', type: 'EXPENSE', color: '#EC4899' },
+              { name: 'Прочие расходы', type: 'EXPENSE', color: '#6B7280' },
+              { name: 'Оплата VPN', type: 'INCOME', color: '#10B981' },
+              { name: 'Рефералы', type: 'INCOME', color: '#3B82F6' },
+              { name: 'Прочие доходы', type: 'INCOME', color: '#14B8A6' },
+            ]
+            for (const c of cats) {
+              try {
+                await fetch('/api/admin/accounting/categories', {
+                  method: 'POST', credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(c),
+                })
+              } catch {}
+            }
+          }
+          break
       }
+
       if (step < STEPS.length - 1) {
         setStep(step + 1)
         toast.success('Сохранено')
@@ -75,51 +140,71 @@ export default function SetupPage() {
 
   const skip = () => {
     if (step < STEPS.length - 1) setStep(step + 1)
-    else {
-      api.setupComplete().then(() => router.push('/admin'))
-    }
+    else api.setupComplete().then(() => router.push('/admin'))
   }
 
+  const back = () => { if (step > 0) setStep(step - 1) }
+
+  const F = ({ label, k, type, placeholder, hint }: { label: string; k: string; type?: string; placeholder?: string; hint?: string }) => (
+    <div>
+      <label className="text-xs font-medium text-gray-500 mb-1 block">{label}</label>
+      <input type={type || 'text'} value={form[k] || ''} onChange={e => upd(k, e.target.value)}
+        className="input" placeholder={placeholder} />
+      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+    </div>
+  )
+
+  const Toggle = ({ label, k, hint }: { label: string; k: string; hint?: string }) => (
+    <div className="flex items-center justify-between py-2">
+      <div>
+        <span className="text-sm text-gray-700">{label}</span>
+        {hint && <p className="text-xs text-gray-400">{hint}</p>}
+      </div>
+      <button onClick={() => upd(k, form[k] === 'true' ? 'false' : 'true')}
+        className={`w-10 h-5 rounded-full transition-colors ${form[k] === 'true' ? 'bg-primary-600' : 'bg-gray-200'}`}>
+        <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${form[k] === 'true' ? 'translate-x-5' : 'translate-x-0.5'}`} />
+      </button>
+    </div>
+  )
+
   return (
-    <div className="min-h-screen bg-surface flex items-center justify-center px-4">
+    <div className="min-h-screen bg-surface flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-xl">
         {/* Progress */}
-        <div className="flex items-center justify-center gap-2 mb-8">
-          {STEPS.map((s, i) => {
-            const Icon = s.icon
-            return (
-              <div key={s.id} className="flex items-center gap-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
-                  i < step ? 'bg-success-700 text-white' :
+        <div className="flex items-center justify-center gap-1 mb-6 flex-wrap">
+          {STEPS.map((s, i) => (
+            <div key={s.id} className="flex items-center gap-1">
+              <button onClick={() => i < step && setStep(i)}
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs transition-all ${
+                  i < step ? 'bg-emerald-600 text-white cursor-pointer' :
                   i === step ? 'bg-primary-600 text-white' :
                   'bg-gray-200 text-gray-400'
-                }`}>
-                  {i < step ? <CheckCircle2 className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
-                </div>
-                {i < STEPS.length - 1 && (
-                  <div className={`w-8 h-0.5 ${i < step ? 'bg-success-700' : 'bg-gray-200'}`} />
-                )}
-              </div>
-            )
-          })}
+                }`}
+                title={s.title}>
+                {i < step ? <CheckCircle2 className="w-3.5 h-3.5" /> : <s.icon className="w-3.5 h-3.5" />}
+              </button>
+              {i < STEPS.length - 1 && <div className={`w-4 h-0.5 ${i < step ? 'bg-emerald-600' : 'bg-gray-200'}`} />}
+            </div>
+          ))}
         </div>
 
-        <div className="card p-6">
-          <h2 className="text-lg font-semibold mb-1">{STEPS[step].title}</h2>
-          <p className="text-sm text-gray-400 mb-6">{STEPS[step].desc}</p>
+        <div className="text-center mb-4">
+          <span className="text-xs text-gray-400">Шаг {step + 1} из {STEPS.length}</span>
+        </div>
 
-          {/* Step 0: Company */}
+        <div className="bg-white rounded-xl border border-gray-100 p-6">
+          <h2 className="text-lg font-semibold mb-1">{STEPS[step].title}</h2>
+          <p className="text-sm text-gray-400 mb-5">{STEPS[step].desc}</p>
+
+          {/* === Компания === */}
           {step === 0 && (
             <div className="space-y-4">
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Название проекта *</label>
-                <input value={form.companyName} onChange={e => upd('companyName', e.target.value)} className="input" placeholder="HIDEYOU VPN" required />
-              </div>
+              <F label="Название проекта *" k="companyName" placeholder="HIDEYOU VPN" />
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-gray-500 mb-1 block">Валюта</label>
-                  <select value={form.currency} onChange={e => upd('currency', e.target.value)} className="input">
-                    <option value="RUB">RUB</option>
+                  <select value={form.currency} onChange={e => upd('currency', e.target.value)} className="input bg-white">
+                    <option value="RUB">RUB (рубли)</option>
                     <option value="USD">USD</option>
                     <option value="EUR">EUR</option>
                     <option value="USDT">USDT</option>
@@ -127,94 +212,152 @@ export default function SetupPage() {
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-500 mb-1 block">Таймзона</label>
-                  <select value={form.timezone} onChange={e => upd('timezone', e.target.value)} className="input">
+                  <select value={form.timezone} onChange={e => upd('timezone', e.target.value)} className="input bg-white">
                     <option value="Europe/Moscow">Москва (UTC+3)</option>
                     <option value="Europe/Kiev">Киев (UTC+2)</option>
                     <option value="Asia/Almaty">Алматы (UTC+6)</option>
+                    <option value="Asia/Yekaterinburg">Екатеринбург (UTC+5)</option>
                     <option value="UTC">UTC</option>
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Ссылка на поддержку</label>
-                <input value={form.supportUrl} onChange={e => upd('supportUrl', e.target.value)} className="input" placeholder="https://t.me/support" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Telegram-канал</label>
-                <input value={form.tgChannel} onChange={e => upd('tgChannel', e.target.value)} className="input" placeholder="https://t.me/channel" />
-              </div>
+              <F label="Ссылка на поддержку" k="supportUrl" placeholder="https://t.me/support" />
+              <F label="Telegram-канал" k="tgChannel" placeholder="https://t.me/channel" />
             </div>
           )}
 
-          {/* Step 1: REMNAWAVE */}
+          {/* === Домены === */}
           {step === 1 && (
             <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-primary-50 text-primary-600 text-xs">
-                Подключите REMNAWAVE-панель для управления VPN-подписками. Можно пропустить и настроить позже.
+              <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
+                Укажите домены для личного кабинета и webhook. Можно пропустить и настроить позже.
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">URL панели</label>
-                <input value={form.remnawaveUrl} onChange={e => upd('remnawaveUrl', e.target.value)} className="input" placeholder="https://panel.example.com" />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">API токен</label>
-                <input type="password" value={form.remnawaveToken} onChange={e => upd('remnawaveToken', e.target.value)} className="input" placeholder="Bearer token" />
-              </div>
+              <F label="Домен ЛК" k="lkDomain" placeholder="lk.example.com" hint="Домен личного кабинета пользователя" />
+              <F label="URL ЛК" k="lkUrl" placeholder="https://lk.example.com" hint="Полный URL (с https://)" />
+              <F label="Домен Webhook" k="webhookDomain" placeholder="api.example.com" hint="Домен для приёма webhook от платёжных систем" />
+              <F label="MiniApp URL" k="miniappUrl" placeholder="https://app.example.com" hint="URL Telegram MiniApp (кнопка в боте)" />
             </div>
           )}
 
-          {/* Step 2: Telegram */}
+          {/* === REMNAWAVE === */}
           {step === 2 && (
             <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-primary-50 text-primary-600 text-xs">
-                Создайте бота через @BotFather и вставьте токен. Можно пропустить.
+              <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
+                Подключите REMNAWAVE-панель для управления VPN-подписками. Можно пропустить.
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Bot Token</label>
-                <input type="password" value={form.botToken} onChange={e => upd('botToken', e.target.value)} className="input" placeholder="123456:ABC-DEF..." />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">Bot Username (без @)</label>
-                <input value={form.botName} onChange={e => upd('botName', e.target.value)} className="input" placeholder="MyVPNBot" />
-              </div>
+              <F label="URL панели" k="remnawaveUrl" placeholder="https://panel.example.com" />
+              <F label="API токен" k="remnawaveToken" type="password" placeholder="Bearer token" />
             </div>
           )}
 
-          {/* Step 3: Payments */}
+          {/* === Telegram === */}
           {step === 3 && (
             <div className="space-y-4">
-              <div className="p-3 rounded-lg bg-primary-50 text-primary-600 text-xs">
-                Подключите платёжные системы. Все поля необязательны — можно настроить позже.
+              <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
+                Создайте бота через @BotFather и вставьте токен. Можно пропустить.
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">ЮKassa Shop ID</label>
-                <input value={form.yukassaShopId} onChange={e => upd('yukassaShopId', e.target.value)} className="input" placeholder="Shop ID" />
+              <F label="Токен бота" k="botToken" type="password" placeholder="123456:ABC-DEF..." />
+              <F label="Username бота (без @)" k="botName" placeholder="MyVPNBot" />
+            </div>
+          )}
+
+          {/* === Платежи === */}
+          {step === 4 && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
+                Подключите платёжные системы. Все поля необязательны.
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">ЮKassa Secret Key</label>
-                <input type="password" value={form.yukassaSecretKey} onChange={e => upd('yukassaSecretKey', e.target.value)} className="input" placeholder="Secret key" />
+              <p className="text-xs font-medium text-gray-500 pt-1">ЮKassa</p>
+              <F label="Shop ID" k="yukassaShopId" placeholder="Идентификатор магазина" />
+              <F label="Secret Key" k="yukassaSecretKey" type="password" placeholder="Секретный ключ" />
+              <p className="text-xs font-medium text-gray-500 pt-2">CryptoPay</p>
+              <F label="API Token" k="cryptopayToken" type="password" placeholder="Токен CryptoPay" />
+              <Toggle label="Telegram Stars" k="starsEnabled" hint="Принимать оплату через Telegram Stars" />
+            </div>
+          )}
+
+          {/* === Email === */}
+          {step === 5 && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
+                SMTP для рассылок и email-уведомлений. Можно пропустить.
               </div>
-              <div>
-                <label className="text-xs font-medium text-gray-500 mb-1 block">CryptoPay API Token</label>
-                <input type="password" value={form.cryptopayToken} onChange={e => upd('cryptopayToken', e.target.value)} className="input" placeholder="API token" />
+              <div className="grid grid-cols-2 gap-3">
+                <F label="SMTP хост" k="smtpHost" placeholder="smtp.gmail.com" />
+                <F label="Порт" k="smtpPort" placeholder="587" />
+              </div>
+              <F label="Логин" k="smtpUser" placeholder="user@example.com" />
+              <F label="Пароль" k="smtpPass" type="password" placeholder="Пароль или App Password" />
+              <F label="Отправитель (From)" k="smtpFrom" placeholder="noreply@example.com" />
+            </div>
+          )}
+
+          {/* === Рефералы === */}
+          {step === 6 && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
+                Реферальная программа. Пользователи получают бонусные дни за приглашённых друзей.
+              </div>
+              <Toggle label="Включить реферальную программу" k="referralEnabled" />
+              {form.referralEnabled === 'true' && (
+                <>
+                  <F label="Бонусные дни за реферала" k="referralBonusDays" type="number" placeholder="30" />
+                  <F label="Мин. дней подписки у реферала" k="referralMinDays" type="number" placeholder="30"
+                    hint="Реферал должен иметь подписку не менее N дней чтобы бонус начислился" />
+                </>
+              )}
+            </div>
+          )}
+
+          {/* === Бухгалтерия === */}
+          {step === 7 && (
+            <div className="space-y-4">
+              <div className="p-3 rounded-lg bg-blue-50 text-blue-700 text-xs">
+                Создадим стандартные категории доходов и расходов для бухгалтерии. Можно изменить позже в настройках.
+              </div>
+              <Toggle label="Создать стандартные категории" k="defaultCategories"
+                hint="Серверы, Реклама, Зарплаты, Подписки, Оплата VPN, Рефералы" />
+              <div className="rounded-lg bg-gray-50 p-4">
+                <p className="text-xs font-medium text-gray-500 mb-2">Будут созданы:</p>
+                <div className="grid grid-cols-2 gap-1 text-xs text-gray-600">
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" />Оплата VPN</div>
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500" />Рефералы</div>
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-teal-500" />Прочие доходы</div>
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500" />Серверы</div>
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-amber-500" />Реклама</div>
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-purple-500" />Зарплаты</div>
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-pink-500" />Подписки (сервисы)</div>
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-gray-500" />Прочие расходы</div>
+                </div>
               </div>
             </div>
           )}
 
           {/* Actions */}
           <div className="flex gap-3 mt-6">
-            <button onClick={saveStep} disabled={loading || (step === 0 && !form.companyName)} className="btn-primary flex-1 py-2.5">
+            {step > 0 && (
+              <button onClick={back} className="px-4 py-2.5 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 flex items-center gap-1">
+                <ChevronLeft className="w-4 h-4" /> Назад
+              </button>
+            )}
+            <button onClick={saveStep}
+              disabled={loading || (step === 0 && !form.companyName)}
+              className="bg-primary-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium flex items-center gap-1.5 flex-1 justify-center disabled:opacity-50 hover:bg-primary-700">
               {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {step < STEPS.length - 1 ? 'Далее' : 'Завершить'}
+              {step < STEPS.length - 1 ? 'Далее' : 'Завершить настройку'}
               {!loading && step < STEPS.length - 1 && <ChevronRight className="w-4 h-4" />}
             </button>
-            {step > 0 && step < STEPS.length && (
-              <button onClick={skip} className="btn-ghost px-4 py-2.5">
+            {SKIP_ALLOWED.has(STEPS[step].id) && (
+              <button onClick={skip} className="px-4 py-2.5 rounded-lg text-sm text-gray-400 hover:text-gray-600 flex items-center gap-1">
                 <SkipForward className="w-4 h-4" /> Пропустить
               </button>
             )}
           </div>
         </div>
+
+        <p className="text-center text-xs text-gray-400 mt-4">
+          Все настройки можно изменить позже в разделе Настройки
+        </p>
       </div>
     </div>
   )

@@ -50,7 +50,7 @@ export default function UserDetailPage() {
       const u = await adminApi.get(`/users/${id}`)
       setUser(u)
     } catch {
-      toast.error('Failed to load user')
+      toast.error('Ошибка загрузки')
     } finally {
       setLoading(false)
     }
@@ -62,7 +62,7 @@ export default function UserDetailPage() {
     navigator.clipboard.writeText(text)
     setCopied(key)
     setTimeout(() => setCopied(null), 2000)
-    toast.success('Copied')
+    toast.success('Скопировано')
   }
 
   const action = async (fn: () => Promise<any>, successMsg: string) => {
@@ -72,7 +72,7 @@ export default function UserDetailPage() {
       toast.success(successMsg)
       await load()
     } catch (err: any) {
-      toast.error(err.message || 'Error')
+      toast.error(err.message || 'Ошибка')
     } finally {
       setActing(false)
     }
@@ -88,7 +88,7 @@ export default function UserDetailPage() {
 
   if (!user) return (
     <div className="page-content">
-      <p className="text-gray-400 text-center py-12">User not found</p>
+      <p className="text-gray-400 text-center py-12">Пользователь не найден</p>
     </div>
   )
 
@@ -140,7 +140,7 @@ export default function UserDetailPage() {
           </button>
           <div>
             <h1 className="page-title">
-              {user.telegramName || user.email?.split('@')[0] || 'User'}
+              {user.telegramName || user.email?.split('@')[0] || 'Пользователь'}
             </h1>
             <p className="page-subtitle font-mono">{user.id}</p>
           </div>
@@ -151,37 +151,37 @@ export default function UserDetailPage() {
         {/* Action buttons */}
         <div className="flex flex-wrap gap-2 mb-5">
           <button onClick={() => setShowExtend(true)} className="btn-primary text-xs py-2 px-3 flex items-center gap-1.5">
-            <Plus className="w-3.5 h-3.5" /> Add Days
+            <Plus className="w-3.5 h-3.5" /> Добавить дни
           </button>
           <button onClick={() => setShowNote(true)} className="btn-default text-xs py-2 px-3 flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5" /> Note
+            <FileText className="w-3.5 h-3.5" /> Заметка
           </button>
           <button onClick={() => setShowBalance(true)} className="btn-default text-xs py-2 px-3 flex items-center gap-1.5">
-            <DollarSign className="w-3.5 h-3.5" /> Balance
+            <DollarSign className="w-3.5 h-3.5" /> Баланс
           </button>
           <button onClick={() => setShowGrantDays(true)} className="btn-default text-xs py-2 px-3 flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5" /> Bonus Days
+            <Calendar className="w-3.5 h-3.5" /> Бонусные дни
           </button>
           <button onClick={() => { setNewRole(user.role); setShowEditRole(true) }} className="btn-default text-xs py-2 px-3 flex items-center gap-1.5">
-            <Shield className="w-3.5 h-3.5" /> Role
+            <Shield className="w-3.5 h-3.5" /> Роль
           </button>
           <button onClick={() => setShowResetPw(true)} className="btn-default text-xs py-2 px-3 flex items-center gap-1.5">
-            <KeyRound className="w-3.5 h-3.5" /> Password
+            <KeyRound className="w-3.5 h-3.5" /> Пароль
           </button>
           <button
             onClick={() => action(
               () => adminApi.post(`/users/${id}/toggle`),
-              user.isActive ? 'User blocked' : 'User unblocked'
+              user.isActive ? 'Пользователь заблокирован' : 'Пользователь разблокирован'
             )}
             className="text-xs py-2 px-3 flex items-center gap-1.5 rounded-lg border transition-colors bg-white border-red-200 text-red-500 hover:bg-red-50"
             disabled={acting}
           >
             <Ban className="w-3.5 h-3.5" />
-            {user.isActive ? 'Block' : 'Unblock'}
+            {user.isActive ? 'Заблокировать' : 'Разблокировать'}
           </button>
           <button onClick={() => setShowDelete(true)}
             className="text-xs py-2 px-3 flex items-center gap-1.5 rounded-lg border transition-colors bg-white border-red-200 text-red-500 hover:bg-red-50">
-            <Trash2 className="w-3.5 h-3.5" /> Delete
+            <Trash2 className="w-3.5 h-3.5" /> Удалить
           </button>
         </div>
 
@@ -192,10 +192,10 @@ export default function UserDetailPage() {
             <div className="bg-white rounded-xl border border-gray-100 p-5">
               <div className="flex flex-col items-center text-center mb-4">
                 <div className="w-14 h-14 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center text-xl font-bold mb-3">
-                  {(user.telegramName || user.email || 'U')[0].toUpperCase()}
+                  {(user.telegramName || user.email || 'П')[0].toUpperCase()}
                 </div>
                 <p className="font-semibold text-gray-900">
-                  {user.telegramName || user.email?.split('@')[0] || 'No name'}
+                  {user.telegramName || user.email?.split('@')[0] || 'Без имени'}
                 </p>
                 <div className="flex items-center gap-2 mt-2 flex-wrap justify-center">
                   <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${statusColor[user.subStatus] || statusColor.INACTIVE}`}>
@@ -211,15 +211,15 @@ export default function UserDetailPage() {
               <div className="space-y-0.5 border-t border-gray-100 pt-3">
                 {user.email && <CopyField label="Email" value={user.email} />}
                 {user.telegramId && <CopyField label="Telegram ID" value={user.telegramId} />}
-                {user.telegramName && <CopyField label="TG Username" value={`@${user.telegramName}`} />}
-                {user.referralCode && <CopyField label="Referral Code" value={user.referralCode} />}
+                {user.telegramName && <CopyField label="TG имя" value={`@${user.telegramName}`} />}
+                {user.referralCode && <CopyField label="Реф. код" value={user.referralCode} />}
                 {user.remnawaveUuid && <CopyField label="RW UUID" value={user.remnawaveUuid} />}
                 <CopyField label="ID" value={user.id} />
               </div>
 
               <div className="space-y-1.5 border-t border-gray-100 pt-3 mt-3 text-xs text-gray-400">
-                <p>Registered: {new Date(user.createdAt).toLocaleString('ru')}</p>
-                {user.lastLoginAt && <p>Last login: {new Date(user.lastLoginAt).toLocaleString('ru')}</p>}
+                <p>Регистрация: {new Date(user.createdAt).toLocaleString('ru')}</p>
+                {user.lastLoginAt && <p>Последний вход: {new Date(user.lastLoginAt).toLocaleString('ru')}</p>}
                 {user.utmCode && <p>UTM: {user.utmCode}</p>}
               </div>
             </div>
@@ -231,15 +231,15 @@ export default function UserDetailPage() {
                 <p className="text-lg font-semibold text-gray-900">{Number(user.totalPaid || 0).toLocaleString('ru')} &#8381;</p>
               </div>
               <div className="bg-white rounded-xl border border-gray-100 p-4">
-                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Balance</p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Баланс</p>
                 <p className="text-lg font-semibold text-gray-900">{Number(user.balance || 0)} &#8381;</p>
               </div>
               <div className="bg-white rounded-xl border border-gray-100 p-4">
-                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Bonus Days</p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Бонусные дни</p>
                 <p className="text-lg font-semibold text-gray-900">{user.bonusDays || 0}</p>
               </div>
               <div className="bg-white rounded-xl border border-gray-100 p-4">
-                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Referrals</p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">Рефералы</p>
                 <p className="text-lg font-semibold text-gray-900">{user._count?.referrals || 0}</p>
               </div>
             </div>
@@ -247,31 +247,31 @@ export default function UserDetailPage() {
             {/* Subscription card */}
             <div className="bg-white rounded-xl border border-gray-100 p-5">
               <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Globe className="w-4 h-4 text-primary-600" /> Subscription
+                <Globe className="w-4 h-4 text-primary-600" /> Подписка
               </h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Status</span>
+                  <span className="text-gray-500">Статус</span>
                   <span className={`font-medium ${user.subStatus === 'ACTIVE' ? 'text-emerald-600' : user.subStatus === 'EXPIRED' ? 'text-red-500' : 'text-gray-500'}`}>
                     {user.subStatus}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Expires</span>
+                  <span className="text-gray-500">Истекает</span>
                   <span className="text-gray-900 font-medium">
                     {user.subExpireAt ? new Date(user.subExpireAt).toLocaleDateString('ru') : '--'}
                   </span>
                 </div>
                 {daysLeft !== null && (
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Days left</span>
+                    <span className="text-gray-500">Дней осталось</span>
                     <span className={`font-medium ${daysLeft <= 3 ? 'text-red-500' : daysLeft <= 7 ? 'text-amber-500' : 'text-emerald-600'}`}>
                       {daysLeft}
                     </span>
                   </div>
                 )}
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Payments</span>
+                  <span className="text-gray-500">Платежи</span>
                   <span className="text-gray-900">{user._count?.payments || 0}</span>
                 </div>
               </div>
@@ -282,7 +282,7 @@ export default function UserDetailPage() {
               <div className="bg-white rounded-xl border border-gray-100 p-5">
                 <SectionHeader
                   icon={<Users className="w-4 h-4 text-primary-600" />}
-                  title="Referrals"
+                  title="Рефералы"
                   count={user.referrals.length}
                   open={referralsOpen}
                   toggle={() => setReferralsOpen(!referralsOpen)}
@@ -316,7 +316,7 @@ export default function UserDetailPage() {
             <div className="bg-white rounded-xl border border-gray-100 p-5">
               <SectionHeader
                 icon={<CreditCard className="w-4 h-4 text-primary-600" />}
-                title="Payment History"
+                title="История платежей"
                 count={user.payments?.length}
                 open={paymentsOpen}
                 toggle={() => setPaymentsOpen(!paymentsOpen)}
@@ -324,17 +324,17 @@ export default function UserDetailPage() {
               {paymentsOpen && (
                 <div className="mt-3">
                   {!user.payments?.length ? (
-                    <p className="text-sm text-gray-400 py-4 text-center">No payments</p>
+                    <p className="text-sm text-gray-400 py-4 text-center">Нет платежей</p>
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b border-gray-100">
-                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Amount</th>
-                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Provider</th>
-                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Status</th>
-                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Purpose</th>
-                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2">Date</th>
+                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Сумма</th>
+                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Провайдер</th>
+                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Статус</th>
+                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Назначение</th>
+                            <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2">Дата</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -368,7 +368,7 @@ export default function UserDetailPage() {
               <div className="bg-white rounded-xl border border-gray-100 p-5">
                 <SectionHeader
                   icon={<Wallet className="w-4 h-4 text-primary-600" />}
-                  title="Balance History"
+                  title="История баланса"
                   count={user.balanceTransactions.length}
                   open={balanceTxOpen}
                   toggle={() => setBalanceTxOpen(!balanceTxOpen)}
@@ -378,7 +378,7 @@ export default function UserDetailPage() {
                     {user.balanceTransactions.map((tx: any) => (
                       <div key={tx.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                         <div>
-                          <p className="text-sm text-gray-900">{tx.description || tx.type || 'Transaction'}</p>
+                          <p className="text-sm text-gray-900">{tx.description || tx.type || 'Транзакция'}</p>
                           <p className="text-xs text-gray-400">{new Date(tx.createdAt).toLocaleString('ru')}</p>
                         </div>
                         <span className={`text-sm font-medium ${Number(tx.amount) >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
@@ -396,7 +396,7 @@ export default function UserDetailPage() {
               <div className="bg-white rounded-xl border border-gray-100 p-5">
                 <SectionHeader
                   icon={<Star className="w-4 h-4 text-primary-600" />}
-                  title="Bonus History"
+                  title="История бонусов"
                   count={user.bonusHistory.length}
                   open={false}
                   toggle={() => {}}
@@ -405,10 +405,10 @@ export default function UserDetailPage() {
                   {user.bonusHistory.map((b: any) => (
                     <div key={b.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                       <div>
-                        <p className="text-sm text-gray-900">{b.reason || 'Bonus'}</p>
+                        <p className="text-sm text-gray-900">{b.reason || 'Бонус'}</p>
                         <p className="text-xs text-gray-400">{new Date(b.appliedAt).toLocaleString('ru')}</p>
                       </div>
-                      <span className="text-sm font-medium text-primary-600">+{b.days} days</span>
+                      <span className="text-sm font-medium text-primary-600">+{b.days} дн.</span>
                     </div>
                   ))}
                 </div>
@@ -419,7 +419,7 @@ export default function UserDetailPage() {
             <div className="bg-white rounded-xl border border-gray-100 p-5">
               <SectionHeader
                 icon={<FileText className="w-4 h-4 text-primary-600" />}
-                title="Admin Notes"
+                title="Заметки"
                 count={user.adminNotesOnUser?.length}
                 open={notesOpen}
                 toggle={() => setNotesOpen(!notesOpen)}
@@ -427,7 +427,7 @@ export default function UserDetailPage() {
               {notesOpen && (
                 <div className="mt-3">
                   {!user.adminNotesOnUser?.length ? (
-                    <p className="text-sm text-gray-400 py-4 text-center">No notes</p>
+                    <p className="text-sm text-gray-400 py-4 text-center">Нет заметок</p>
                   ) : (
                     <div className="space-y-2">
                       {user.adminNotesOnUser.map((note: any) => (
@@ -435,7 +435,7 @@ export default function UserDetailPage() {
                           <div className="min-w-0 flex-1">
                             <p className="text-sm text-gray-900">{note.note}</p>
                             <p className="text-xs text-gray-400 mt-1">
-                              {note.author?.telegramName || 'Admin'} &middot; {new Date(note.createdAt).toLocaleString('ru')}
+                              {note.author?.telegramName || 'Админ'} &middot; {new Date(note.createdAt).toLocaleString('ru')}
                             </p>
                           </div>
                         </div>
@@ -450,7 +450,7 @@ export default function UserDetailPage() {
             {user.userTags?.length > 0 && (
               <div className="bg-white rounded-xl border border-gray-100 p-5">
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-3">
-                  <Tag className="w-4 h-4 text-primary-600" /> Tags
+                  <Tag className="w-4 h-4 text-primary-600" /> Теги
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {user.userTags.map((t: any) => (
@@ -467,7 +467,7 @@ export default function UserDetailPage() {
               <div className="bg-white rounded-xl border border-gray-100 p-5">
                 <SectionHeader
                   icon={<Globe className="w-4 h-4 text-primary-600" />}
-                  title="Variables"
+                  title="Переменные"
                   count={user.userVariables.length}
                   open={variablesOpen}
                   toggle={() => setVariablesOpen(!variablesOpen)}
@@ -477,8 +477,8 @@ export default function UserDetailPage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-100">
-                          <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Key</th>
-                          <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2">Value</th>
+                          <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2 pr-4">Ключ</th>
+                          <th className="text-left text-[10px] uppercase tracking-wider text-gray-400 font-medium pb-2">Значение</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -502,46 +502,46 @@ export default function UserDetailPage() {
 
       {/* Extend subscription */}
       {showExtend && (
-        <ModalOverlay onClose={() => setShowExtend(false)} title="Add Subscription Days">
-          <input type="number" className="input w-full" placeholder="Number of days"
+        <ModalOverlay onClose={() => setShowExtend(false)} title="Добавить дни подписки">
+          <input type="number" className="input w-full" placeholder="Количество дней"
             value={extendDays} onChange={e => setExtendDays(+e.target.value)} min={1} />
           <button onClick={() => {
-            action(() => adminApi.post(`/users/${id}/add-days`, { days: extendDays }), `+${extendDays} days`)
+            action(() => adminApi.post(`/users/${id}/add-days`, { days: extendDays }), `+${extendDays} дн.`)
             setShowExtend(false)
           }} className="btn-primary w-full justify-center" disabled={acting}>
-            +{extendDays} days
+            +{extendDays} дн.
           </button>
         </ModalOverlay>
       )}
 
       {/* Add note */}
       {showNote && (
-        <ModalOverlay onClose={() => setShowNote(false)} title="Add Note">
-          <textarea className="input w-full min-h-[80px] resize-y" placeholder="Note text..."
+        <ModalOverlay onClose={() => setShowNote(false)} title="Добавить заметку">
+          <textarea className="input w-full min-h-[80px] resize-y" placeholder="Текст заметки..."
             value={noteText} onChange={e => setNoteText(e.target.value)} />
           <button onClick={() => {
-            action(() => adminApi.post(`/users/${id}/note`, { note: noteText }), 'Note added')
+            action(() => adminApi.post(`/users/${id}/note`, { note: noteText }), 'Заметка добавлена')
             setShowNote(false); setNoteText('')
           }} className="btn-primary w-full justify-center" disabled={acting || !noteText}>
-            Save Note
+            Сохранить
           </button>
         </ModalOverlay>
       )}
 
       {/* Adjust balance */}
       {showBalance && (
-        <ModalOverlay onClose={() => setShowBalance(false)} title="Adjust Balance">
+        <ModalOverlay onClose={() => setShowBalance(false)} title="Изменить баланс">
           <p className="text-sm text-gray-500">
-            Current balance: <strong className="text-gray-900">{Number(user.balance || 0).toFixed(2)} &#8381;</strong>
+            Текущий баланс: <strong className="text-gray-900">{Number(user.balance || 0).toFixed(2)} &#8381;</strong>
           </p>
-          <input type="number" className="input w-full" placeholder="Amount (+ top up, - deduct)"
+          <input type="number" className="input w-full" placeholder="Сумма (+ пополнение, - списание)"
             value={balanceAmount} onChange={e => setBalanceAmount(+e.target.value)} />
-          <input className="input w-full" placeholder="Description"
+          <input className="input w-full" placeholder="Описание"
             value={balanceDesc} onChange={e => setBalanceDesc(e.target.value)} />
           <button onClick={() => {
             action(
               () => adminApi.put(`/users/${id}`, { balance: Number(user.balance || 0) + balanceAmount }),
-              'Balance updated'
+              'Баланс обновлён'
             )
             setShowBalance(false); setBalanceAmount(0); setBalanceDesc('')
           }} className="btn-primary w-full justify-center" disabled={acting || balanceAmount === 0}>
@@ -552,46 +552,46 @@ export default function UserDetailPage() {
 
       {/* Grant bonus days */}
       {showGrantDays && (
-        <ModalOverlay onClose={() => setShowGrantDays(false)} title="Grant Bonus Days">
+        <ModalOverlay onClose={() => setShowGrantDays(false)} title="Начислить бонусные дни">
           <p className="text-sm text-gray-500">
-            Current bonus days: <strong className="text-gray-900">{user.bonusDays ?? 0}</strong>
+            Текущие бонусные дни: <strong className="text-gray-900">{user.bonusDays ?? 0}</strong>
           </p>
-          <input type="number" className="input w-full" placeholder="Number of days"
+          <input type="number" className="input w-full" placeholder="Количество дней"
             value={grantDaysCount} onChange={e => setGrantDaysCount(+e.target.value)} min={1} />
-          <input className="input w-full" placeholder="Description (optional)"
+          <input className="input w-full" placeholder="Описание (необязательно)"
             value={grantDaysDesc} onChange={e => setGrantDaysDesc(e.target.value)} />
           <button onClick={() => {
             action(
               () => adminApi.put(`/users/${id}`, { bonusDays: (user.bonusDays || 0) + grantDaysCount }),
-              `+${grantDaysCount} bonus days`
+              `+${grantDaysCount} бонусных дн.`
             )
             setShowGrantDays(false); setGrantDaysCount(30); setGrantDaysDesc('')
           }} className="btn-primary w-full justify-center" disabled={acting || grantDaysCount < 1}>
-            +{grantDaysCount} bonus days
+            +{grantDaysCount} бонусных дн.
           </button>
         </ModalOverlay>
       )}
 
       {/* Reset password */}
       {showResetPw && (
-        <ModalOverlay onClose={() => setShowResetPw(false)} title="Reset Password">
-          <input type="password" className="input w-full" placeholder="New password (min 6 chars)"
+        <ModalOverlay onClose={() => setShowResetPw(false)} title="Сбросить пароль">
+          <input type="password" className="input w-full" placeholder="Новый пароль (мин. 6 символов)"
             value={newPassword} onChange={e => setNewPassword(e.target.value)} />
           <button onClick={() => {
             action(
               () => adminApi.post(`/users/${id}/reset-password`, { password: newPassword }),
-              'Password reset'
+              'Пароль сброшен'
             )
             setShowResetPw(false); setNewPassword('')
           }} className="btn-primary w-full justify-center" disabled={acting || newPassword.length < 6}>
-            Reset Password
+            Сбросить пароль
           </button>
         </ModalOverlay>
       )}
 
       {/* Edit role */}
       {showEditRole && (
-        <ModalOverlay onClose={() => setShowEditRole(false)} title="Change Role">
+        <ModalOverlay onClose={() => setShowEditRole(false)} title="Изменить роль">
           <select className="input w-full" value={newRole} onChange={e => setNewRole(e.target.value)}>
             <option value="USER">USER</option>
             <option value="ADMIN">ADMIN</option>
@@ -601,35 +601,35 @@ export default function UserDetailPage() {
           <button onClick={() => {
             action(
               () => adminApi.put(`/users/${id}`, { role: newRole }),
-              `Role changed to ${newRole}`
+              `Роль изменена на ${newRole}`
             )
             setShowEditRole(false)
           }} className="btn-primary w-full justify-center" disabled={acting}>
-            Save Role
+            Сохранить
           </button>
         </ModalOverlay>
       )}
 
       {/* Delete confirmation */}
       {showDelete && (
-        <ModalOverlay onClose={() => setShowDelete(false)} title="Delete User">
+        <ModalOverlay onClose={() => setShowDelete(false)} title="Удалить пользователя">
           <p className="text-sm text-gray-500">
-            Are you sure you want to permanently delete <strong className="text-gray-900">{user.telegramName || user.email || user.id}</strong>?
-            This action cannot be undone.
+            Вы уверены, что хотите удалить <strong className="text-gray-900">{user.telegramName || user.email || user.id}</strong>?
+            Это действие необратимо.
           </p>
           <div className="flex gap-2">
             <button onClick={() => setShowDelete(false)} className="btn-default flex-1 justify-center">
-              Cancel
+              Отмена
             </button>
             <button onClick={() => {
               action(
                 () => adminApi.delete(`/users/${id}`),
-                'User deleted'
+                'Пользователь удалён'
               ).then(() => router.push('/admin/users'))
               setShowDelete(false)
             }} className="flex-1 py-2 px-4 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 transition-colors text-center"
               disabled={acting}>
-              Delete
+              Удалить
             </button>
           </div>
         </ModalOverlay>

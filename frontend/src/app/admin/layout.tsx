@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, CreditCard, Package, Newspaper, Wifi, BookOpen,
   Tag, MessageCircle, TrendingUp, Globe, Upload, Settings, LogOut, Menu, X,
   DollarSign, Handshake, Megaphone, Server, FileBarChart, GitCompare, Bot,
-  Loader2, Bell, Send, PanelLeft,
+  Loader2, Bell, PanelLeft,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 
@@ -21,7 +21,6 @@ const NAV = [
   { href: '/admin/servers',      icon: Server,          label: 'Серверы',      group: 'finance' },
   { href: '/admin/marketing',    icon: Megaphone,       label: 'Маркетинг',    group: 'marketing' },
   { href: '/admin/communications', icon: MessageCircle, label: 'Коммуникации', group: 'tools' },
-  { href: '/admin/broadcast',     icon: Send,           label: 'Рассылки',     group: 'tools' },
   { href: '/admin/bot/constructor', icon: Bot,          label: 'Конструктор',  group: 'tools' },
   { href: '/admin/bot',           icon: MessageCircle,  label: 'Чат бота',     group: 'tools' },
   { href: '/admin/notifications', icon: Bell,           label: 'Уведомления',  group: 'tools' },

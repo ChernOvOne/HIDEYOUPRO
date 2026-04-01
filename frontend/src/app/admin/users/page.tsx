@@ -26,7 +26,7 @@ export default function UsersPage() {
       const data = await apiFetch(`/?${params}`)
       setUsers(data.users)
       setTotal(data.total)
-    } catch { toast.error('Failed to load') }
+    } catch { toast.error('Ошибка загрузки') }
     setLoading(false)
   }, [page, search, status])
 
@@ -34,10 +34,10 @@ export default function UsersPage() {
 
   const statusBadge = (s: string) => {
     switch (s) {
-      case 'ACTIVE':   return <span className="badge-success">Active</span>
-      case 'EXPIRED':  return <span className="badge-danger">Expired</span>
-      case 'TRIAL':    return <span className="badge-warn">Trial</span>
-      default:         return <span className="badge-gray">Inactive</span>
+      case 'ACTIVE':   return <span className="badge-success">Активный</span>
+      case 'EXPIRED':  return <span className="badge-danger">Истёк</span>
+      case 'TRIAL':    return <span className="badge-warn">Пробный</span>
+      default:         return <span className="badge-gray">Неактивный</span>
     }
   }
 
@@ -45,8 +45,8 @@ export default function UsersPage() {
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Users</h1>
-          <p className="page-subtitle">{total} total</p>
+          <h1 className="page-title">Пользователи</h1>
+          <p className="page-subtitle">{total} всего</p>
         </div>
         <button
           onClick={() => {
@@ -65,7 +65,7 @@ export default function UsersPage() {
           }}
           className="bg-primary-600 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-primary-700 transition-colors"
         >
-          <Download className="w-3.5 h-3.5" /> Export CSV
+          <Download className="w-3.5 h-3.5" /> Экспорт CSV
         </button>
       </div>
 
@@ -75,13 +75,13 @@ export default function UsersPage() {
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
             <input value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
-              placeholder="Search by email, TG, ID..." className="input pl-9" />
+              placeholder="Поиск по email, TG, ID..." className="input pl-9" />
           </div>
           <select value={status} onChange={e => { setStatus(e.target.value); setPage(1) }} className="input w-auto">
-            <option value="">All statuses</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="expired">Expired</option>
+            <option value="">Все статусы</option>
+            <option value="active">Активный</option>
+            <option value="inactive">Неактивный</option>
+            <option value="expired">Истёк</option>
           </select>
         </div>
 
@@ -90,11 +90,11 @@ export default function UsersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="table-header text-left px-4 py-3">User</th>
-                <th className="table-header text-left px-4 py-3 hidden md:table-cell">Status</th>
+                <th className="table-header text-left px-4 py-3">Пользователь</th>
+                <th className="table-header text-left px-4 py-3 hidden md:table-cell">Статус</th>
                 <th className="table-header text-left px-4 py-3 hidden lg:table-cell">LTV</th>
                 <th className="table-header text-left px-4 py-3 hidden lg:table-cell">UTM</th>
-                <th className="table-header text-left px-4 py-3 hidden md:table-cell">Date</th>
+                <th className="table-header text-left px-4 py-3 hidden md:table-cell">Дата</th>
                 <th className="table-header px-4 py-3 w-10"></th>
               </tr>
             </thead>
@@ -102,7 +102,7 @@ export default function UsersPage() {
               {loading ? (
                 <tr><td colSpan={6} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin mx-auto text-primary-600" /></td></tr>
               ) : users.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-12 text-gray-400">No users found</td></tr>
+                <tr><td colSpan={6} className="text-center py-12 text-gray-400">Пользователи не найдены</td></tr>
               ) : users.map(u => (
                 <tr key={u.id} className="table-row cursor-pointer" onClick={() => router.push(`/admin/users/${u.id}`)}>
                   <td className="px-4 py-3">
@@ -119,7 +119,7 @@ export default function UsersPage() {
                   <td className="px-4 py-3 hidden md:table-cell">{statusBadge(u.subStatus)}</td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     <span className="font-medium">{Number(u.totalPaid || 0).toLocaleString('ru')} &#8381;</span>
-                    <span className="text-xs text-gray-400 ml-1">({u.paymentsCount} paid)</span>
+                    <span className="text-xs text-gray-400 ml-1">({u.paymentsCount} опл.)</span>
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell">
                     {u.utmCode ? <span className="badge-info">{u.utmCode}</span> : <span className="text-gray-300">&mdash;</span>}
@@ -139,7 +139,7 @@ export default function UsersPage() {
         {/* Pagination */}
         {total > 20 && (
           <div className="flex items-center justify-between mt-4">
-            <span className="text-xs text-gray-400">Page {page} of {Math.ceil(total / 20)}</span>
+            <span className="text-xs text-gray-400">Стр. {page} из {Math.ceil(total / 20)}</span>
             <div className="flex gap-1">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn-default px-2 py-1">
                 <ChevronLeft className="w-4 h-4" />

@@ -19,12 +19,12 @@ interface NotificationChannel {
 }
 
 const ALL_EVENTS = [
-  { key: 'payments',      label: 'Payments' },
-  { key: 'new_users',     label: 'New users' },
-  { key: 'expenses',      label: 'Expenses' },
-  { key: 'server_alerts', label: 'Server alerts' },
-  { key: 'subscriptions', label: 'Subscriptions' },
-  { key: 'errors',        label: 'Errors' },
+  { key: 'payments',      label: 'Платежи' },
+  { key: 'new_users',     label: 'Новые пользователи' },
+  { key: 'expenses',      label: 'Расходы' },
+  { key: 'server_alerts', label: 'Алерты серверов' },
+  { key: 'subscriptions', label: 'Подписки' },
+  { key: 'errors',        label: 'Ошибки' },
 ]
 
 const apiFetch = async (path: string, opts?: RequestInit) => {
@@ -64,7 +64,7 @@ export default function NotificationsPage() {
       const data = await apiFetch('')
       setChannels(data.channels || data || [])
     } catch {
-      toast.error('Failed to load notification channels')
+      toast.error('Ошибка загрузки каналов уведомлений')
     } finally {
       setLoading(false)
     }
@@ -76,7 +76,7 @@ export default function NotificationsPage() {
 
   const addChannel = async () => {
     if (!formName.trim() || !formChatId.trim()) {
-      toast.error('Name and Chat ID are required')
+      toast.error('Название и Chat ID обязательны')
       return
     }
     setFormSaving(true)
@@ -85,14 +85,14 @@ export default function NotificationsPage() {
         method: 'POST',
         body: JSON.stringify({ name: formName.trim(), chatId: formChatId.trim(), events: formEvents }),
       })
-      toast.success('Channel added')
+      toast.success('Канал добавлен')
       setFormName('')
       setFormChatId('')
       setFormEvents(['payments', 'new_users'])
       setShowAdd(false)
       load()
     } catch (err: any) {
-      toast.error(err.message || 'Failed to add channel')
+      toast.error(err.message || 'Ошибка добавления канала')
     } finally {
       setFormSaving(false)
     }
@@ -114,7 +114,7 @@ export default function NotificationsPage() {
         c.id === channel.id ? { ...c, events: newEvents } : c
       ))
     } catch {
-      toast.error('Failed to update')
+      toast.error('Ошибка обновления')
     }
   }
 
@@ -130,7 +130,7 @@ export default function NotificationsPage() {
         c.id === channel.id ? { ...c, enabled: !c.enabled } : c
       ))
     } catch {
-      toast.error('Failed to toggle')
+      toast.error('Ошибка переключения')
     }
   }
 
@@ -140,9 +140,9 @@ export default function NotificationsPage() {
     setTestingId(id)
     try {
       await apiFetch(`/${id}/test`, { method: 'POST' })
-      toast.success('Test message sent')
+      toast.success('Тестовое сообщение отправлено')
     } catch {
-      toast.error('Failed to send test')
+      toast.error('Ошибка отправки теста')
     } finally {
       setTestingId(null)
     }
@@ -151,14 +151,14 @@ export default function NotificationsPage() {
   /* ── Delete ────────────────────────────────────────────── */
 
   const deleteChannel = async (id: string) => {
-    if (!confirm('Delete this notification channel?')) return
+    if (!confirm('Удалить этот канал уведомлений?')) return
     setDeletingId(id)
     try {
       await apiFetch(`/${id}`, { method: 'DELETE' })
-      toast.success('Channel deleted')
+      toast.success('Канал удалён')
       setChannels(prev => prev.filter(c => c.id !== id))
     } catch {
-      toast.error('Failed to delete')
+      toast.error('Ошибка удаления')
     } finally {
       setDeletingId(null)
     }
@@ -178,15 +178,15 @@ export default function NotificationsPage() {
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Notifications</h1>
-          <p className="page-subtitle">Manage notification channels for alerts</p>
+          <h1 className="page-title">Уведомления</h1>
+          <p className="page-subtitle">Управление каналами уведомлений</p>
         </div>
         <button
           onClick={() => setShowAdd(!showAdd)}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 transition-colors"
         >
           {showAdd ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {showAdd ? 'Cancel' : 'Add Channel'}
+          {showAdd ? 'Отмена' : 'Добавить канал'}
         </button>
       </div>
 
@@ -196,19 +196,20 @@ export default function NotificationsPage() {
           {/* ── Add form ──────────────────────────────────── */}
           {showAdd && (
             <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <h2 className="text-sm font-semibold text-gray-900 mb-4">New Notification Channel</h2>
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">Новый канал уведомлений</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Channel Name</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Название канала</label>
                   <input
                     value={formName}
                     onChange={e => setFormName(e.target.value)}
-                    placeholder="e.g. Payment Alerts"
+                    placeholder="напр. Алерты платежей"
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-300"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1.5">Telegram Chat ID</label>
+
                   <input
                     value={formChatId}
                     onChange={e => setFormChatId(e.target.value)}
@@ -216,11 +217,11 @@ export default function NotificationsPage() {
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-300"
                   />
                   <p className="text-xs text-gray-400 mt-1">
-                    Use @userinfobot or forward a message to @RawDataBot to get the chat ID
+                    Используйте @userinfobot или перешлите сообщение @RawDataBot для получения Chat ID
                   </p>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Events</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">События</label>
                   <div className="flex flex-wrap gap-2">
                     {ALL_EVENTS.map(evt => (
                       <button
@@ -243,7 +244,7 @@ export default function NotificationsPage() {
                   className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-50"
                 >
                   {formSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                  Add Channel
+                  Добавить канал
                 </button>
               </div>
             </div>
@@ -257,8 +258,8 @@ export default function NotificationsPage() {
           ) : channels.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
               <Bell className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">No channels yet</h3>
-              <p className="text-xs text-gray-400">Add a Telegram chat or group to receive notifications</p>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Каналов пока нет</h3>
+              <p className="text-xs text-gray-400">Добавьте Telegram чат или группу для получения уведомлений</p>
             </div>
           ) : (
             channels.map(channel => (
@@ -293,7 +294,7 @@ export default function NotificationsPage() {
 
                 {/* events */}
                 <div className="mb-4">
-                  <p className="text-xs font-medium text-gray-500 mb-2">Subscribed Events</p>
+                  <p className="text-xs font-medium text-gray-500 mb-2">Подписанные события</p>
                   <div className="flex flex-wrap gap-1.5">
                     {ALL_EVENTS.map(evt => {
                       const active = channel.events.includes(evt.key)
@@ -323,10 +324,10 @@ export default function NotificationsPage() {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary-50 text-primary-600 border border-primary-100 hover:bg-primary-100 transition-colors disabled:opacity-50"
                   >
                     {testingId === channel.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                    Test
+                    Тест
                   </button>
                   <span className="text-xs text-gray-300 flex-1">
-                    Added {new Date(channel.createdAt).toLocaleDateString('en')}
+                    Добавлен {new Date(channel.createdAt).toLocaleDateString('ru')}
                   </span>
                   <button
                     onClick={() => deleteChannel(channel.id)}
@@ -334,7 +335,7 @@ export default function NotificationsPage() {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
                   >
                     {deletingId === channel.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                    Delete
+                    Удалить
                   </button>
                 </div>
               </div>

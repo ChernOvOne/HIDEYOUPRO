@@ -20,13 +20,13 @@ interface LandingSection {
 }
 
 const SECTION_TYPES: { value: string; label: string }[] = [
-  { value: 'hero', label: 'Hero' },
-  { value: 'features', label: 'Features' },
-  { value: 'pricing', label: 'Pricing' },
+  { value: 'hero', label: 'Главный баннер' },
+  { value: 'features', label: 'Возможности' },
+  { value: 'pricing', label: 'Тарифы' },
   { value: 'faq', label: 'FAQ' },
-  { value: 'reviews', label: 'Reviews' },
-  { value: 'cta', label: 'Call to Action' },
-  { value: 'custom', label: 'Custom' },
+  { value: 'reviews', label: 'Отзывы' },
+  { value: 'cta', label: 'Призыв к действию' },
+  { value: 'custom', label: 'Произвольный' },
 ]
 
 const apiFetch = async (path: string, opts?: RequestInit) => {
@@ -68,7 +68,7 @@ export default function LandingEditorPage() {
       const list = data.sections || data || []
       setSections(list.sort((a: LandingSection, b: LandingSection) => a.sortOrder - b.sortOrder))
     } catch {
-      toast.error('Failed to load landing sections')
+      toast.error('Ошибка загрузки секций лендинга')
     } finally {
       setLoading(false)
     }
@@ -80,7 +80,7 @@ export default function LandingEditorPage() {
 
   const addSection = async () => {
     if (!formTitle.trim()) {
-      toast.error('Title is required')
+      toast.error('Заголовок обязателен')
       return
     }
     setAddSaving(true)
@@ -95,12 +95,12 @@ export default function LandingEditorPage() {
           sortOrder: sections.length,
         }),
       })
-      toast.success('Section added')
+      toast.success('Секция добавлена')
       resetForm()
       setShowAdd(false)
       load()
     } catch (err: any) {
-      toast.error(err.message || 'Failed to add')
+      toast.error(err.message || 'Ошибка добавления')
     } finally {
       setAddSaving(false)
     }
@@ -135,12 +135,12 @@ export default function LandingEditorPage() {
           sortOrder: formOrder,
         }),
       })
-      toast.success('Section updated')
+      toast.success('Секция обновлена')
       setEditingId(null)
       resetForm()
       load()
     } catch (err: any) {
-      toast.error(err.message || 'Failed to update')
+      toast.error(err.message || 'Ошибка обновления')
     } finally {
       setSavingId(null)
     }
@@ -149,13 +149,13 @@ export default function LandingEditorPage() {
   /* ── Delete ────────────────────────────────────────────── */
 
   const deleteSection = async (id: string) => {
-    if (!confirm('Delete this section?')) return
+    if (!confirm('Удалить эту секцию?')) return
     try {
       await apiFetch(`/${id}`, { method: 'DELETE' })
-      toast.success('Section deleted')
+      toast.success('Секция удалена')
       setSections(prev => prev.filter(s => s.id !== id))
     } catch {
-      toast.error('Failed to delete')
+      toast.error('Ошибка удаления')
     }
   }
 
@@ -171,7 +171,7 @@ export default function LandingEditorPage() {
         sec.id === s.id ? { ...sec, isActive: !sec.isActive } : sec
       ))
     } catch {
-      toast.error('Failed to toggle')
+      toast.error('Ошибка переключения')
     }
   }
 
@@ -203,7 +203,7 @@ export default function LandingEditorPage() {
         }),
       ])
     } catch {
-      toast.error('Failed to reorder')
+      toast.error('Ошибка сортировки')
       load()
     }
   }
@@ -236,14 +236,14 @@ export default function LandingEditorPage() {
     <>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Landing Editor</h1>
-          <p className="page-subtitle">{sections.length} sections</p>
+          <h1 className="page-title">Редактор лендинга</h1>
+          <p className="page-subtitle">{sections.length} секций</p>
         </div>
         <button
           onClick={() => { setShowAdd(!showAdd); cancelEdit() }}
           className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 transition-colors"
         >
-          {showAdd ? 'Cancel' : <><Plus className="w-4 h-4" /> Add Section</>}
+          {showAdd ? 'Отмена' : <><Plus className="w-4 h-4" /> Добавить секцию</>}
         </button>
       </div>
 
@@ -253,7 +253,7 @@ export default function LandingEditorPage() {
           {/* ── Add form ──────────────────────────────────── */}
           {showAdd && (
             <div className="bg-white rounded-xl border border-gray-100 p-5">
-              <h2 className="text-sm font-semibold text-gray-900 mb-4">New Section</h2>
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">Новая секция</h2>
               <SectionForm
                 title={formTitle} setTitle={setFormTitle}
                 content={formContent} setContent={setFormContent}
@@ -267,7 +267,7 @@ export default function LandingEditorPage() {
                 className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-50"
               >
                 {addSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                Add Section
+                Добавить секцию
               </button>
             </div>
           )}
@@ -280,8 +280,8 @@ export default function LandingEditorPage() {
           ) : sections.length === 0 ? (
             <div className="bg-white rounded-xl border border-gray-100 p-12 text-center">
               <Globe className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">No sections yet</h3>
-              <p className="text-xs text-gray-400">Add sections to build your landing page</p>
+              <h3 className="text-sm font-semibold text-gray-900 mb-1">Секций пока нет</h3>
+              <p className="text-xs text-gray-400">Добавьте секции для создания лендинга</p>
             </div>
           ) : (
             sections.map((section, idx) => (
@@ -290,8 +290,8 @@ export default function LandingEditorPage() {
                   /* ── Edit mode ── */
                   <div className="p-5">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-sm font-semibold text-gray-900">Edit Section</h3>
-                      <button onClick={cancelEdit} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                      <h3 className="text-sm font-semibold text-gray-900">Редактирование секции</h3>
+                      <button onClick={cancelEdit} className="text-xs text-gray-400 hover:text-gray-600">Отмена</button>
                     </div>
                     <SectionForm
                       title={formTitle} setTitle={setFormTitle}
@@ -306,7 +306,7 @@ export default function LandingEditorPage() {
                       className="mt-4 flex items-center justify-center gap-2 w-full py-2.5 rounded-lg text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 transition-colors disabled:opacity-50"
                     >
                       {savingId === section.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      Save Changes
+                      Сохранить
                     </button>
                   </div>
                 ) : (
@@ -341,13 +341,13 @@ export default function LandingEditorPage() {
                           </span>
                           {!section.isActive && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded border bg-gray-50 text-gray-400 border-gray-100 font-medium">
-                              Hidden
+                              Скрыта
                             </span>
                           )}
                           <span className="text-[10px] text-gray-300 ml-auto">#{section.sortOrder}</span>
                         </div>
                         <p className="text-xs text-gray-400 line-clamp-2">
-                          {section.content || 'No content'}
+                          {section.content || 'Нет контента'}
                         </p>
                       </div>
 
@@ -358,21 +358,21 @@ export default function LandingEditorPage() {
                           className={`p-1.5 rounded-lg transition-colors ${
                             section.isActive ? 'text-primary-600 hover:bg-primary-50' : 'text-gray-300 hover:bg-gray-50'
                           }`}
-                          title={section.isActive ? 'Hide' : 'Show'}
+                          title={section.isActive ? 'Скрыть' : 'Показать'}
                         >
                           {section.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                         </button>
                         <button
                           onClick={() => startEdit(section)}
                           className="p-1.5 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-primary-50 transition-colors"
-                          title="Edit"
+                          title="Редактировать"
                         >
                           <FileText className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => deleteSection(section.id)}
                           className="p-1.5 rounded-lg text-gray-300 hover:text-red-600 hover:bg-red-50 transition-colors"
-                          title="Delete"
+                          title="Удалить"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -405,27 +405,27 @@ function SectionForm({
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1.5">Title</label>
+        <label className="block text-xs font-medium text-gray-500 mb-1.5">Заголовок</label>
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
-          placeholder="Section title"
+          placeholder="Заголовок секции"
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-300"
         />
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-500 mb-1.5">Content</label>
+        <label className="block text-xs font-medium text-gray-500 mb-1.5">Контент</label>
         <textarea
           rows={5}
           value={content}
           onChange={e => setContent(e.target.value)}
-          placeholder="Section content (HTML or text)..."
+          placeholder="Контент секции (HTML или текст)..."
           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white resize-y min-h-[100px] placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-300 font-mono"
         />
       </div>
       <div className="flex gap-4">
         <div className="flex-1">
-          <label className="block text-xs font-medium text-gray-500 mb-1.5">Type</label>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Тип</label>
           <select
             value={type}
             onChange={e => setType(e.target.value)}
@@ -438,7 +438,7 @@ function SectionForm({
         </div>
         {order !== null && setOrder && (
           <div className="w-24">
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">Order</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Порядок</label>
             <input
               type="number"
               value={order}
@@ -449,7 +449,7 @@ function SectionForm({
         )}
       </div>
       <div className="flex items-center justify-between py-1">
-        <span className="text-sm text-gray-700">Active (visible on landing)</span>
+        <span className="text-sm text-gray-700">Активна (видна на лендинге)</span>
         <button
           onClick={() => setActive(!active)}
           className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
