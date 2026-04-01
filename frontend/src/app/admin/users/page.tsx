@@ -65,8 +65,12 @@ export default function UsersPage() {
           xhr.upload.onprogress = (e) => {
             if (e.lengthComputable) {
               const pct = Math.round((e.loaded / e.total) * 100)
-              setImportProgress(`Загрузка: ${pct}%`)
+              setImportProgress(pct < 100 ? `Загрузка: ${pct}%` : 'Обработка данных...')
             }
+          }
+
+          xhr.upload.onload = () => {
+            setImportProgress('Обработка данных (может занять минуту)...')
           }
 
           xhr.onload = () => {

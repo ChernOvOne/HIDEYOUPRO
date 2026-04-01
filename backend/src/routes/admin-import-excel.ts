@@ -202,15 +202,31 @@ export async function adminImportExcelRoutes(app: FastifyInstance) {
 
   // POST /import/users
   app.post('/import/users', admin, async (req, reply) => {
-    const data = await req.file()
-    if (!data) return reply.code(400).send({ error: 'No file uploaded' })
+    console.log('=== IMPORT USERS START ===')
+    let data: any
+    try {
+      data = await req.file()
+      console.log('File received:', data?.filename, data?.mimetype)
+    } catch (e: any) {
+      console.error('req.file() error:', e.message)
+      return reply.code(400).send({ error: 'File upload error: ' + e.message })
+    }
+    if (!data) {
+      console.log('No file in request')
+      return reply.code(400).send({ error: 'No file uploaded' })
+    }
 
-    const buffer = await data.toBuffer()
+    let buffer: Buffer
+    try { buffer = await data.toBuffer(); console.log('Buffer:', buffer.length, 'bytes') }
+    catch (e: any) { console.error('toBuffer:', e.message); return reply.code(400).send({ error: e.message }) }
+
     const wb = new ExcelJS.Workbook()
-    await wb.xlsx.load(buffer as any)
+    try { await wb.xlsx.load(buffer as any); console.log('Parsed:', wb.worksheets.length, 'sheets') }
+    catch (e: any) { console.error('Parse:', e.message); return reply.code(400).send({ error: 'Ошибка чтения Excel' }) }
 
     const ws = wb.worksheets[0]
-    if (!ws) return reply.code(400).send({ error: 'Empty workbook' })
+    if (!ws) return reply.code(400).send({ error: 'Пустой файл' })
+    console.log('Rows:', ws.rowCount)
 
     const headerRow = ws.getRow(1)
     const headers: Record<string, number> = {}
@@ -218,10 +234,10 @@ export async function adminImportExcelRoutes(app: FastifyInstance) {
       const val = String(cell.value ?? '').trim().toLowerCase()
       headers[val] = colNumber
     })
+    console.log('Headers:', Object.keys(headers))
 
-    // At least telegram_id or email required to identify user
     if (!headers['telegram_id'] && !headers['email']) {
-      return reply.code(400).send({ error: 'File must have at least telegram_id or email column' })
+      return reply.code(400).send({ error: 'Нужна колонка telegram_id или email' })
     }
 
     let imported = 0
@@ -235,8 +251,14 @@ export async function adminImportExcelRoutes(app: FastifyInstance) {
         if (!headers[key]) return ''
         const raw = row.getCell(headers[key]).value
         if (raw === null || raw === undefined) return ''
-        // ExcelJS may return objects for emails/hyperlinks: { text, hyperlink }
+        // ExcelJS returns emails/hyperlinks as objects: { text, hyperlink }
         if (typeof raw === 'object' && raw !== null) {
+          // For emails: hyperlink contains mailto:user@domain.com
+          if ('hyperlink' in raw && typeof (raw as any).hyperlink === 'string') {
+            const hl = (raw as any).hyperlink as string
+            if (hl.startsWith('mailto:')) return hl.replace('mailto:', '').trim()
+            return hl.trim()
+          }
           if ('text' in raw) return String((raw as any).text).trim()
           if ('result' in raw) return String((raw as any).result).trim()
           return String(JSON.stringify(raw))
@@ -246,6 +268,13 @@ export async function adminImportExcelRoutes(app: FastifyInstance) {
 
       const telegramId = cell('telegram_id') || null
       const email      = cell('email') || null
+
+      // Debug first row email
+      if (rowIdx === 2 && headers['email']) {
+        const rawEmail = row.getCell(headers['email']).value
+        console.log('DEBUG email cell raw:', typeof rawEmail, JSON.stringify(rawEmail))
+        console.log('DEBUG email parsed:', email)
+      }
 
       if (!telegramId && !email) continue // skip empty rows
 
@@ -286,6 +315,7 @@ export async function adminImportExcelRoutes(app: FastifyInstance) {
         }
 
         const payload: Record<string, any> = {}
+        if (email) payload.email = email
         if (remnawaveUuid !== undefined) payload.remnawaveUuid = remnawaveUuid
         if (balance !== undefined && !isNaN(balance)) payload.balance = balance
         if (usernameTg !== undefined) payload.telegramName = usernameTg
@@ -314,34 +344,7 @@ export async function adminImportExcelRoutes(app: FastifyInstance) {
       }
     }
 
-    // Auto-sync REMNAWAVE subscriptions for imported users
-    let synced = 0
-    try {
-      const { remnawave } = await import('../services/remnawave')
-      if (remnawave.configured) {
-        const usersWithUuid = await prisma.user.findMany({
-          where: { remnawaveUuid: { not: null } },
-          select: { id: true, remnawaveUuid: true },
-        })
-        const statusMap: Record<string, string> = {
-          ACTIVE: 'ACTIVE', DISABLED: 'INACTIVE', LIMITED: 'ACTIVE', EXPIRED: 'EXPIRED',
-        }
-        for (const u of usersWithUuid) {
-          try {
-            const rm = await remnawave.getUserByUuid(u.remnawaveUuid!)
-            await prisma.user.update({
-              where: { id: u.id },
-              data: {
-                subStatus: (statusMap[rm.status] || 'INACTIVE') as any,
-                subExpireAt: rm.expireAt ? new Date(rm.expireAt) : null,
-              },
-            })
-            synced++
-          } catch {}
-        }
-      }
-    } catch {}
-
-    return { imported, updated, synced, errors }
+    console.log('=== IMPORT DONE ===', { imported, updated, errors: errors.length })
+    return { imported, updated, errors, hint: 'Нажмите «Синхронизировать» для обновления подписок из REMNAWAVE' }
   })
 }
