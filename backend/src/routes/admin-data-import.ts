@@ -892,13 +892,46 @@ async function runImport(session: ImportSession, dryRun: boolean) {
           existingUser = await prisma.user.findFirst({ where: { remnawaveUuid } })
         }
 
+        // Build user data — only set unique fields if they won't conflict
         const userData: any = {}
-        if (telegramId) userData.telegramId = telegramId
-        if (email) userData.email = email
         if (telegramName) userData.telegramName = telegramName
-        if (remnawaveUuid) userData.remnawaveUuid = remnawaveUuid
         if (balance !== undefined && !isNaN(balance)) userData.balance = balance
         if (createdAt) userData.createdAt = createdAt
+
+        // For unique fields: only set if no other user already has this value
+        if (telegramId && !existingUser?.telegramId) {
+          const conflict = await prisma.user.findUnique({ where: { telegramId } })
+          if (!conflict || conflict.id === existingUser?.id) userData.telegramId = telegramId
+        }
+        if (email && email.includes('@')) {
+          const conflict = await prisma.user.findUnique({ where: { email } })
+          if (!conflict || conflict.id === existingUser?.id) userData.email = email
+        }
+        if (remnawaveUuid) {
+          const conflict = await prisma.user.findFirst({ where: { remnawaveUuid } })
+          if (!conflict || conflict.id === existingUser?.id) userData.remnawaveUuid = remnawaveUuid
+        }
+
+        // Additional fields
+        const subLink = getVal(row, 'subLink') || null
+        const subStatus = getVal(row, 'subStatus') || null
+        const subExpireStr = getVal(row, 'subExpireAt') || null
+        const totalPaidStr = getVal(row, 'totalPaid') || null
+        const bonusDaysStr = getVal(row, 'bonusDays') || null
+        const utmCode = getVal(row, 'utmCode') || null
+        const notes = getVal(row, 'notes') || null
+        const phone = getVal(row, 'phone') || null
+        const name = getVal(row, 'name') || null
+
+        if (subLink) userData.subLink = subLink
+        if (subStatus && ['ACTIVE','INACTIVE','EXPIRED','TRIAL'].includes(subStatus.toUpperCase())) userData.subStatus = subStatus.toUpperCase()
+        if (subExpireStr) { const d = parseDate(subExpireStr); if (d) userData.subExpireAt = d }
+        if (totalPaidStr) { const n = parseFloat(totalPaidStr.replace(',','.')); if (!isNaN(n)) userData.totalPaid = n }
+        if (bonusDaysStr) { const n = parseInt(bonusDaysStr); if (!isNaN(n)) userData.bonusDays = n }
+        if (utmCode) userData.utmCode = utmCode
+        if (notes) userData.notes = notes
+        if (phone && !userData.telegramName) userData.telegramName = name || phone
+        if (name && !userData.telegramName) userData.telegramName = name
 
         if (dryRun) {
           if (existingUser) {
@@ -926,16 +959,19 @@ async function runImport(session: ImportSession, dryRun: boolean) {
         } else {
           // Real import
           if (existingUser) {
-            // Save previous data for rollback
-            const prevData: any = {}
-            for (const key of Object.keys(userData)) {
-              prevData[key] = (existingUser as any)[key]
+            try {
+              const prevData: any = {}
+              for (const key of Object.keys(userData)) {
+                prevData[key] = (existingUser as any)[key]
+              }
+              rollbackData.push({ action: 'update', table: 'user', id: existingUser.id, previousData: prevData })
+              await prisma.user.update({ where: { id: existingUser.id }, data: userData })
+              stats.users.update++
+              if (legacyId) legacyToDbId.set(legacyId, existingUser.id)
+            } catch (e: any) {
+              errors.push(`Строка ${i + 2}: обновление — ${e.message?.includes('Unique') ? 'конфликт уникального поля' : e.message?.substring(0, 80)}`)
+              stats.users.skip++
             }
-            rollbackData.push({ action: 'update', table: 'user', id: existingUser.id, previousData: prevData })
-
-            await prisma.user.update({ where: { id: existingUser.id }, data: userData })
-            stats.users.update++
-            if (legacyId) legacyToDbId.set(legacyId, existingUser.id)
           } else {
             try {
               const newUser = await prisma.user.create({ data: userData })
