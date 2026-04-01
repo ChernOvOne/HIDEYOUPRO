@@ -1,0 +1,98 @@
+# ── HTTP-only конфигурация ────────────────────────────────────
+# Используется до получения SSL-сертификатов.
+# После certbot запусти: lk → [3] Настроить SSL, затем перезапусти nginx.
+worker_processes      auto;
+worker_rlimit_nofile  65535;
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+  worker_connections  4096;
+  use epoll;
+  multi_accept on;
+}
+
+http {
+  include      /etc/nginx/mime.types;
+  default_type application/octet-stream;
+
+  access_log /var/log/nginx/access.log;
+  sendfile on; tcp_nopush on; tcp_nodelay on;
+  keepalive_timeout 75s; server_tokens off;
+  client_max_body_size 20m;
+
+  gzip on; gzip_vary on; gzip_proxied any; gzip_comp_level 6;
+  gzip_types text/plain text/css application/json application/javascript image/svg+xml;
+
+  limit_req_zone $binary_remote_addr zone=api:20m    rate=60r/m;
+  limit_req_zone $binary_remote_addr zone=auth:10m   rate=10r/m;
+  limit_req_zone $binary_remote_addr zone=webhook:5m rate=300r/m;
+  limit_conn_zone $binary_remote_addr zone=perip:10m;
+
+  # Docker DNS резолвер.
+  # ВАЖНО: upstream со статическим server резолвится один раз при старте.
+  # Чтобы nginx переразрешал DNS после rebuild контейнеров — используем
+  # переменные вместо upstream-блоков (proxy_pass http://$backend_host).
+  resolver 127.0.0.11 valid=10s ipv6=off;
+  resolver_timeout 5s;
+
+  # Переменные для upstream — nginx резолвит их динамически через Docker DNS.
+  # Это единственный надёжный способ избежать кеширования старых IP после rebuild.
+  map $host $backend_host  { default "backend:4000";  }
+  map $host $frontend_host { default "frontend:3000"; }
+
+  server {
+    listen 80 default_server;
+    server_name _;
+
+    # Certbot challenge
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+
+    location /api/auth/ {
+      limit_req zone=auth burst=5 nodelay;
+      proxy_pass http://$backend_host;
+      proxy_http_version 1.1; proxy_set_header Connection "";
+      proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/webhooks/ {
+      limit_req zone=webhook burst=100 nodelay;
+      proxy_pass http://$backend_host;
+      proxy_http_version 1.1; proxy_set_header Connection "";
+      proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr;
+      proxy_read_timeout 60s;
+    }
+
+    location /api/ {
+      limit_req zone=api burst=30 nodelay;
+      proxy_pass http://$backend_host;
+      proxy_http_version 1.1; proxy_set_header Connection "";
+      proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /uploads/ {
+      proxy_pass http://$backend_host;
+      proxy_http_version 1.1; proxy_set_header Connection "";
+      proxy_set_header Host $host;
+      expires 30d; add_header Cache-Control "public"; access_log off;
+    }
+
+    location /_next/static/ {
+      proxy_pass http://$frontend_host;
+      proxy_http_version 1.1; proxy_set_header Connection "";
+      proxy_set_header Host $host;
+      expires 1y; add_header Cache-Control "public, immutable"; access_log off;
+    }
+
+    location / {
+      proxy_pass http://$frontend_host;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection "upgrade";
+      proxy_set_header Host $host; proxy_set_header X-Real-IP $remote_addr;
+      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      proxy_set_header X-Forwarded-Proto $scheme;
+    }
+  }
+}

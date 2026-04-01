@@ -1,0 +1,1110 @@
+// ============================================================
+//  HIDEYOU PRO — Unified Prisma Schema
+//  VPN Management + Accounting + Marketing + Partners
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  USERS & AUTH
+// ══════════════════════════════════════════════════════════════
+
+model User {
+  id            String    @id @default(uuid())
+  email         String?   @unique
+  emailVerified Boolean   @default(false) @map("email_verified")
+  telegramId    String?   @unique @map("telegram_id")
+  telegramName  String?   @map("telegram_name")
+  passwordHash  String?   @map("password_hash")
+
+  // VPN subscription (REMNAWAVE)
+  remnawaveUuid String?   @unique @map("remnawave_uuid")
+  subExpireAt   DateTime? @map("sub_expire_at")
+  subStatus     SubStatus @default(INACTIVE) @map("sub_status")
+  subLink       String?   @map("sub_link")
+
+  // Role & access
+  role          Role      @default(USER)
+  isActive      Boolean   @default(true) @map("is_active")
+
+  // Finance
+  balance       Decimal   @default(0) @map("balance") @db.Decimal(10, 2)
+  bonusDays     Int       @default(0) @map("bonus_days")
+  totalPaid     Decimal   @default(0) @map("total_paid") @db.Decimal(10, 2)
+  paymentsCount Int       @default(0) @map("payments_count")
+
+  // Referral
+  referralCode  String    @unique @default(cuid()) @map("referral_code")
+  referredById  String?   @map("referred_by_id")
+  referredBy    User?     @relation("Referrals", fields: [referredById], references: [id])
+  referrals     User[]    @relation("Referrals")
+
+  // Customer attribution (from buhgalteria)
+  utmCode       String?   @map("utm_code")
+  source        String?
+  avatarColor   String?   @map("avatar_color")
+  notes         String?
+
+  lastIp        String?   @map("last_ip")
+  lastLoginAt   DateTime? @map("last_login_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  payments           Payment[]
+  bonusHistory       ReferralBonus[]
+  sessions           Session[]
+  importRecord       ImportRecord?
+  notifications      Notification[]
+  notificationReads  NotificationRead[]
+  adminNotesOnUser   AdminNote[]          @relation("AdminNotesOnUser")
+  adminNotesBy       AdminNote[]          @relation("AdminNotesBy")
+  giftsSent          GiftSubscription[]   @relation("GiftsSent")
+  giftsReceived      GiftSubscription[]   @relation("GiftsReceived")
+  balanceTransactions BalanceTransaction[]
+  emailVerifications EmailVerification[]
+  promoUsages        PromoUsage[]
+  botMessages        BotMessage[]
+  userTags           UserTag[]
+  userVariables      UserVariable[]
+  transactions       Transaction[]        @relation("TransactionCreator")
+  inkasRecords       InkasRecord[]        @relation("InkasCreator")
+  auditLogs          AuditLog[]
+  partner            Partner?
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  userAgent String?  @map("user_agent")
+  ip        String?
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  VPN: TARIFFS & PAYMENTS
+// ══════════════════════════════════════════════════════════════
+
+model Tariff {
+  id             String      @id @default(uuid())
+  name           String
+  description    String?
+  priceRub       Decimal     @map("price_rub") @db.Decimal(10, 2)
+  priceUsdt      Decimal?    @map("price_usdt") @db.Decimal(10, 2)
+  durationDays   Int         @map("duration_days")
+  trafficGb      Int?        @map("traffic_gb")
+  deviceLimit    Int         @default(3) @map("device_limit")
+  countries      String?
+  protocol       String?
+  speed          String?
+  sortOrder      Int         @default(0) @map("sort_order")
+  isActive       Boolean     @default(true) @map("is_active")
+  isVisible      Boolean     @default(true) @map("is_visible")
+  isTrial        Boolean     @default(false) @map("is_trial")
+  type           TariffType  @default(SUBSCRIPTION)
+
+  // REMNAWAVE
+  remnawaveTag       String?  @map("remnawave_tag")
+  remnawaveSquads    String[] @map("remnawave_squads")
+  trafficStrategy    String?  @map("traffic_strategy")
+
+  // Variant pricing
+  mode     String   @default("single")
+  variants Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  payments Payment[]
+
+  @@map("tariffs")
+}
+
+model Payment {
+  id             String          @id @default(uuid())
+  userId         String          @map("user_id")
+  user           User            @relation(fields: [userId], references: [id])
+  tariffId       String?         @map("tariff_id")
+  tariff         Tariff?         @relation(fields: [tariffId], references: [id])
+
+  amount         Decimal         @db.Decimal(10, 2)
+  currency       String          @default("RUB")
+  status         PaymentStatus   @default(PENDING)
+  provider       PaymentProvider
+  purpose        PaymentPurpose  @default(SUBSCRIPTION)
+  externalId     String?         @unique @map("external_id")
+
+  description    String?
+  metadata       Json?
+  paidAt         DateTime?       @map("paid_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  referralBonus  ReferralBonus?
+  transaction    Transaction?    @relation("PaymentTransaction")
+
+  @@index([userId])
+  @@index([status])
+  @@map("payments")
+}
+
+model ReferralBonus {
+  id                   String            @id @default(uuid())
+  referrerId           String            @map("referrer_id")
+  referrer             User              @relation(fields: [referrerId], references: [id])
+  triggeredByPaymentId String            @unique @map("triggered_by_payment_id")
+  triggeredByPayment   Payment           @relation(fields: [triggeredByPaymentId], references: [id])
+  bonusType            ReferralBonusType @default(DAYS) @map("bonus_type")
+  bonusDays            Int               @default(0) @map("bonus_days")
+  bonusAmount          Decimal?          @db.Decimal(10, 2) @map("bonus_amount")
+  bonusCurrency        String?           @default("RUB") @map("bonus_currency")
+  appliedAt            DateTime          @default(now()) @map("applied_at")
+
+  @@map("referral_bonuses")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CONTENT: NEWS, NOTIFICATIONS, INSTRUCTIONS
+// ══════════════════════════════════════════════════════════════
+
+model News {
+  id           String    @id @default(uuid())
+  title        String
+  content      String
+  type         NewsType  @default(NEWS)
+  isActive     Boolean   @default(true) @map("is_active")
+  publishAt    DateTime? @map("publish_at")
+  expiresAt    DateTime? @map("expires_at")
+  imageUrl     String?   @map("image_url")
+  ctaText      String?   @map("cta_text")
+  ctaUrl       String?   @map("cta_url")
+  sortOrder    Int       @default(0) @map("sort_order")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("news")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String           @map("user_id")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  url       String?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  reads     NotificationRead[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model NotificationRead {
+  id             String       @id @default(uuid())
+  userId         String       @map("user_id")
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notificationId String       @map("notification_id")
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  readAt         DateTime     @default(now()) @map("read_at")
+
+  @@unique([userId, notificationId])
+  @@map("notification_reads")
+}
+
+model TelegramProxy {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  tgLink      String?  @map("tg_link")
+  httpsLink   String?  @map("https_link")
+  tag         String?
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("telegram_proxies")
+}
+
+model AdminNote {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation("AdminNotesOnUser", fields: [userId], references: [id], onDelete: Cascade)
+  authorId  String   @map("author_id")
+  author    User     @relation("AdminNotesBy", fields: [authorId], references: [id])
+  note      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("admin_notes")
+}
+
+model GiftSubscription {
+  id           String     @id @default(uuid())
+  code         String     @unique
+  senderId     String     @map("sender_id")
+  sender       User       @relation("GiftsSent", fields: [senderId], references: [id])
+  recipientId  String?    @map("recipient_id")
+  recipient    User?      @relation("GiftsReceived", fields: [recipientId], references: [id])
+  tariffId     String     @map("tariff_id")
+  status       GiftStatus @default(PENDING)
+  message      String?
+  expiresAt    DateTime   @map("expires_at")
+  claimedAt    DateTime?  @map("claimed_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  @@map("gift_subscriptions")
+}
+
+model BalanceTransaction {
+  id          String                 @id @default(uuid())
+  userId      String                 @map("user_id")
+  user        User                   @relation(fields: [userId], references: [id])
+  amount      Decimal                @db.Decimal(10, 2)
+  type        BalanceTransactionType
+  description String?
+  createdAt   DateTime               @default(now()) @map("created_at")
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("balance_transactions")
+}
+
+model EmailVerification {
+  id        String                @id @default(uuid())
+  userId    String                @map("user_id")
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email     String
+  code      String
+  type      EmailVerificationType @default(REGISTRATION)
+  expiresAt DateTime              @map("expires_at")
+  usedAt    DateTime?             @map("used_at")
+  createdAt DateTime              @default(now()) @map("created_at")
+
+  @@index([email, code])
+  @@map("email_verifications")
+}
+
+model InstructionPlatform {
+  id        String           @id @default(uuid())
+  name      String
+  icon      String?
+  sortOrder Int              @default(0) @map("sort_order")
+  isActive  Boolean          @default(true) @map("is_active")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  apps      InstructionApp[]
+
+  @@map("instruction_platforms")
+}
+
+model InstructionApp {
+  id         String              @id @default(uuid())
+  platformId String              @map("platform_id")
+  platform   InstructionPlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+  name       String
+  icon       String?
+  deeplink   String?
+  sortOrder  Int                 @default(0) @map("sort_order")
+  isActive   Boolean             @default(true) @map("is_active")
+  createdAt  DateTime            @default(now()) @map("created_at")
+  updatedAt  DateTime            @updatedAt @map("updated_at")
+
+  steps      InstructionStep[]
+
+  @@map("instruction_apps")
+}
+
+model InstructionStep {
+  id        String         @id @default(uuid())
+  appId     String         @map("app_id")
+  app       InstructionApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  imageUrl  String?        @map("image_url")
+  sortOrder Int            @default(0) @map("sort_order")
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+
+  @@map("instruction_steps")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SETTINGS & SYSTEM
+// ══════════════════════════════════════════════════════════════
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+model ImportRecord {
+  id              String   @id @default(uuid())
+  userId          String   @unique @map("user_id")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  remnawaveUuid   String?  @map("remnawave_uuid")
+  matchedBy       String?  @map("matched_by")
+  importedAt      DateTime @default(now()) @map("imported_at")
+
+  @@map("import_records")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PROMOS
+// ══════════════════════════════════════════════════════════════
+
+model PromoCode {
+  id            String    @id @default(uuid())
+  code          String    @unique
+  type          String
+  bonusDays     Int?      @map("bonus_days")
+  discountPct   Int?      @map("discount_pct")
+  balanceAmount Decimal?  @map("balance_amount") @db.Decimal(10, 2)
+  tariffIds     String[]  @map("tariff_ids")
+  maxUses       Int?      @map("max_uses")
+  maxUsesPerUser Int      @default(1) @map("max_uses_per_user")
+  usedCount     Int       @default(0) @map("used_count")
+  expiresAt     DateTime? @map("expires_at")
+  isActive      Boolean   @default(true) @map("is_active")
+  description   String?
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  usages        PromoUsage[]
+
+  @@map("promo_codes")
+}
+
+model PromoUsage {
+  id        String   @id @default(uuid())
+  promoId   String   @map("promo_id")
+  promo     PromoCode @relation(fields: [promoId], references: [id])
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  usedAt    DateTime @default(now()) @map("used_at")
+
+  @@unique([promoId, userId])
+  @@map("promo_usages")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  TELEGRAM BOT
+// ══════════════════════════════════════════════════════════════
+
+model BotMessage {
+  id           String          @id @default(uuid())
+  chatId       String          @map("chat_id")
+  userId       String?         @map("user_id")
+  user         User?           @relation(fields: [userId], references: [id])
+  direction    BotMsgDirection
+  text         String
+  buttonsJson  Json?           @map("buttons_json")
+  callbackData String?         @map("callback_data")
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  @@index([chatId, createdAt(sort: Desc)])
+  @@index([userId])
+  @@map("bot_messages")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  BROADCASTS & FUNNELS
+// ══════════════════════════════════════════════════════════════
+
+model Broadcast {
+  id             String          @id @default(uuid())
+  name           String
+  status         BroadcastStatus @default(DRAFT)
+
+  channelTg      Boolean         @default(false) @map("channel_tg")
+  channelEmail   Boolean         @default(false) @map("channel_email")
+
+  tgText         String?         @map("tg_text")
+  tgParseMode    String          @default("Markdown") @map("tg_parse_mode")
+  tgButtons      Json?           @map("tg_buttons")
+  tgMediaUrl     String?         @map("tg_media_url")
+  tgMediaType    String?         @map("tg_media_type")
+  tgPollQuestion String?         @map("tg_poll_question")
+  tgPollOptions  Json?           @map("tg_poll_options")
+  tgPollAnon     Boolean         @default(true) @map("tg_poll_anon")
+  tgPollMulti    Boolean         @default(false) @map("tg_poll_multi")
+
+  emailSubject   String?         @map("email_subject")
+  emailHtml      String?         @map("email_html")
+  emailTemplate  String          @default("dark") @map("email_template")
+
+  audienceType   String          @default("all") @map("audience_type")
+  audienceValue  String?         @map("audience_value")
+
+  scheduledAt    DateTime?       @map("scheduled_at")
+  sentAt         DateTime?       @map("sent_at")
+  sentCount      Int             @default(0) @map("sent_count")
+  failCount      Int             @default(0) @map("fail_count")
+
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  @@map("broadcasts")
+}
+
+model Funnel {
+  id            String   @id @default(uuid())
+  triggerId     String   @unique @map("trigger_id")
+  name          String
+  description   String?
+  enabled       Boolean  @default(false)
+  isCustom      Boolean  @default(false) @map("is_custom")
+  sortOrder     Int      @default(0) @map("sort_order")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  steps         FunnelStep[]
+  logs          FunnelLog[]
+
+  @@map("funnels")
+}
+
+model FunnelStep {
+  id            String   @id @default(uuid())
+  funnelId      String   @map("funnel_id")
+  funnel        Funnel   @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  stepOrder     Int      @default(0) @map("step_order")
+
+  delayType     String   @default("immediate") @map("delay_type")
+  delayValue    Int      @default(0) @map("delay_value")
+  delayTime     String?  @map("delay_time")
+
+  condition     String   @default("none") @map("condition")
+
+  channelTg     Boolean  @default(false) @map("channel_tg")
+  channelEmail  Boolean  @default(false) @map("channel_email")
+  channelLk     Boolean  @default(false) @map("channel_lk")
+
+  tgText        String?  @map("tg_text")
+  tgButtons     Json?    @map("tg_buttons")
+  tgParseMode   String   @default("Markdown") @map("tg_parse_mode")
+
+  emailSubject  String?  @map("email_subject")
+  emailHtml     String?  @map("email_html")
+  emailBtnText  String?  @map("email_btn_text")
+  emailBtnUrl   String?  @map("email_btn_url")
+  emailTemplate String   @default("dark") @map("email_template")
+
+  lkTitle       String?  @map("lk_title")
+  lkMessage     String?  @map("lk_message")
+  lkType        String   @default("INFO") @map("lk_type")
+
+  actionType    String   @default("none") @map("action_type")
+  actionValue   Int      @default(0) @map("action_value")
+  actionPromoExpiry Int  @default(7) @map("action_promo_expiry")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([funnelId, stepOrder])
+  @@map("funnel_steps")
+}
+
+model FunnelLog {
+  id        String   @id @default(uuid())
+  funnelId  String   @map("funnel_id")
+  funnel    Funnel   @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id")
+  stepOrder Int      @default(0) @map("step_order")
+  channel   String
+  status    String   @default("sent")
+  error     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([funnelId, userId, stepOrder])
+  @@map("funnel_logs")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  BOT ENGINE: NO-CODE CONSTRUCTOR
+// ══════════════════════════════════════════════════════════════
+
+model BotBlockGroup {
+  id        String     @id @default(uuid())
+  name      String
+  icon      String?
+  sortOrder Int        @default(0) @map("sort_order")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  blocks    BotBlock[]
+
+  @@map("bot_block_groups")
+}
+
+model BotBlock {
+  id        String       @id @default(uuid())
+  name      String
+  groupId   String?      @map("group_id")
+  group     BotBlockGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  type      BotBlockType
+
+  text         String?
+  mediaUrl     String?  @map("media_url")
+  mediaType    String?  @map("media_type")
+  parseMode    String   @default("Markdown") @map("parse_mode")
+  pinMessage   Boolean  @default(false) @map("pin_message")
+  deletePrev   String   @default("none") @map("delete_prev")
+  replyKeyboard Json?   @map("reply_keyboard")
+  removeReplyKb Boolean @default(false) @map("remove_reply_kb")
+
+  conditionType   String?  @map("condition_type")
+  conditionValue  String?  @map("condition_value")
+  nextBlockTrue   String?  @map("next_block_true")
+  nextBlockFalse  String?  @map("next_block_false")
+
+  actionType   String?  @map("action_type")
+  actionValue  String?  @map("action_value")
+  nextBlockId  String?  @map("next_block_id")
+
+  inputPrompt     String?  @map("input_prompt")
+  inputVar        String?  @map("input_var")
+  inputValidation String?  @map("input_validation")
+
+  delayMinutes    Int?     @map("delay_minutes")
+  splitVariants   Json?    @map("split_variants")
+  redirectBlockId String?  @map("redirect_block_id")
+  reactionEmoji   String?  @map("reaction_emoji")
+  notifyAdminText String?  @map("notify_admin_text")
+
+  httpMethod   String?  @map("http_method")
+  httpUrl      String?  @map("http_url")
+  httpHeaders  Json?    @map("http_headers")
+  httpBody     String?  @map("http_body")
+  httpSaveVar  String?  @map("http_save_var")
+
+  throttleMinutes Int?   @map("throttle_minutes")
+  scheduleStart   String? @map("schedule_start")
+  scheduleEnd     String? @map("schedule_end")
+  scheduleDays    Json?   @map("schedule_days")
+  scheduleBlockId String? @map("schedule_block_id")
+
+  isDraft    Boolean  @default(false) @map("is_draft")
+  version    Int      @default(1)
+  publishedAt DateTime? @map("published_at")
+
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  buttons    BotButton[]
+  triggers   BotTrigger[]
+  stats      BotBlockStat[]
+
+  @@index([groupId])
+  @@map("bot_blocks")
+}
+
+model BotButton {
+  id           String   @id @default(uuid())
+  blockId      String   @map("block_id")
+  block        BotBlock @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  label        String
+  type         String
+  nextBlockId  String?  @map("next_block_id")
+  url          String?
+  row          Int      @default(0)
+  col          Int      @default(0)
+  sortOrder    Int      @default(0) @map("sort_order")
+  clickCount   Int      @default(0) @map("click_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([blockId])
+  @@map("bot_buttons")
+}
+
+model BotTrigger {
+  id       String   @id @default(uuid())
+  type     String
+  value    String
+  blockId  String   @map("block_id")
+  block    BotBlock @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  priority Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([type, value])
+  @@map("bot_triggers")
+}
+
+model BotBlockStat {
+  id      String   @id @default(uuid())
+  blockId String   @map("block_id")
+  block   BotBlock @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  date    DateTime @default(now()) @db.Date
+  views   Int      @default(0)
+  clicks  Int      @default(0)
+
+  @@unique([blockId, date])
+  @@map("bot_block_stats")
+}
+
+model UserTag {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tag       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, tag])
+  @@index([tag])
+  @@map("user_tags")
+}
+
+model UserVariable {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, key])
+  @@map("user_variables")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ACCOUNTING: TRANSACTIONS & CATEGORIES (from buhgalteria)
+// ══════════════════════════════════════════════════════════════
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  color     String   @default("#534AB7")
+  icon      String?
+  isActive  Boolean  @default(true) @map("is_active")
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  transactions  Transaction[]
+  autoTagRules  AutoTagRule[]
+  recurringPayments RecurringPayment[]
+
+  @@map("categories")
+}
+
+model AutoTagRule {
+  id         String   @id @default(uuid())
+  categoryId String   @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  keyword    String
+
+  @@map("auto_tag_rules")
+}
+
+model Transaction {
+  id          String          @id @default(uuid())
+  type        TransactionType
+  amount      Decimal         @db.Decimal(10, 2)
+  date        DateTime        @db.Date
+  categoryId  String?         @map("category_id")
+  category    Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  description String?
+  receiptUrl  String?         @map("receipt_url")
+  isHistorical Boolean        @default(false) @map("is_historical")
+  createdById String?         @map("created_by_id")
+  createdBy   User?           @relation("TransactionCreator", fields: [createdById], references: [id])
+  paymentId   String?         @unique @map("payment_id")
+  payment     Payment?        @relation("PaymentTransaction", fields: [paymentId], references: [id])
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@index([type, date])
+  @@index([categoryId])
+  @@map("transactions")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PARTNERS & INVESTMENTS (from buhgalteria)
+// ══════════════════════════════════════════════════════════════
+
+model Partner {
+  id               String   @id @default(uuid())
+  name             String
+  roleLabel        String?  @map("role_label")
+  tgUsername       String?   @map("tg_username")
+  tgId            String?   @map("tg_id")
+  sharePercent     Decimal   @default(0) @map("share_percent") @db.Decimal(5, 2)
+  avatarColor      String?   @map("avatar_color")
+  initials         String?
+  notes            String?
+  initialInvestment  Decimal @default(0) @map("initial_investment") @db.Decimal(10, 2)
+  initialReturned    Decimal @default(0) @map("initial_returned") @db.Decimal(10, 2)
+  initialDividends   Decimal @default(0) @map("initial_dividends") @db.Decimal(10, 2)
+  isActive         Boolean  @default(true) @map("is_active")
+  userId           String?  @unique @map("user_id")
+  user             User?    @relation(fields: [userId], references: [id])
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  inkasRecords     InkasRecord[]
+  adCampaigns      AdCampaign[]
+
+  @@map("partners")
+}
+
+model InkasRecord {
+  id          String    @id @default(uuid())
+  partnerId   String    @map("partner_id")
+  partner     Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  type        InkasType
+  amount      Decimal   @db.Decimal(10, 2)
+  date        DateTime  @db.Date
+  monthLabel  String?   @map("month_label")
+  description String?
+  createdById String?   @map("created_by_id")
+  createdBy   User?     @relation("InkasCreator", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([partnerId])
+  @@map("inkas_records")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MARKETING: ADS, UTM, LEADS (from buhgalteria)
+// ══════════════════════════════════════════════════════════════
+
+model AdCampaign {
+  id                String   @id @default(uuid())
+  date              DateTime @db.Date
+  channelName       String   @map("channel_name")
+  channelUrl        String?  @map("channel_url")
+  format            String?
+  amount            Decimal  @db.Decimal(10, 2)
+  subscribersGained Int      @default(0) @map("subscribers_gained")
+  screenshotUrl     String?  @map("screenshot_url")
+  notes             String?
+  budgetSource      String   @default("account") @map("budget_source")
+  investorPartnerId String?  @map("investor_partner_id")
+  investorPartner   Partner? @relation(fields: [investorPartnerId], references: [id])
+  utmCode           String?  @unique @map("utm_code")
+  targetUrl         String?  @map("target_url")
+  targetType        String?  @map("target_type")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  utmClicks         UtmClick[]
+  utmLeads          UtmLead[]
+
+  @@map("ad_campaigns")
+}
+
+model UtmClick {
+  id        String   @id @default(uuid())
+  utmCode   String   @map("utm_code")
+  campaign  AdCampaign? @relation(fields: [utmCode], references: [utmCode])
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  referer   String?
+  country   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([utmCode])
+  @@map("utm_clicks")
+}
+
+model UtmLead {
+  id           String   @id @default(uuid())
+  utmCode      String   @map("utm_code")
+  campaign     AdCampaign? @relation(fields: [utmCode], references: [utmCode])
+  customerId   String?  @map("customer_id")
+  customerName String?  @map("customer_name")
+  username     String?
+  extraData    Json?    @map("extra_data")
+  converted    Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([utmCode])
+  @@map("utm_leads")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SERVERS & RECURRING (from buhgalteria)
+// ══════════════════════════════════════════════════════════════
+
+model Server {
+  id              String       @id @default(uuid())
+  name            String
+  provider        String?
+  ipAddress       String?      @map("ip_address")
+  purpose         String?
+  panelUrl        String?      @map("panel_url")
+  monthlyCost     Decimal      @default(0) @map("monthly_cost") @db.Decimal(10, 2)
+  currency        String       @default("RUB")
+  paymentDay      Int?         @map("payment_day")
+  nextPaymentDate DateTime?    @map("next_payment_date") @db.Date
+  status          ServerStatus @default(ACTIVE)
+  notifyDaysBefore Int         @default(3) @map("notify_days_before")
+  isActive        Boolean      @default(true) @map("is_active")
+  notes           String?
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  recurringPayments RecurringPayment[]
+
+  @@map("servers")
+}
+
+model RecurringPayment {
+  id          String    @id @default(uuid())
+  name        String
+  categoryId  String?   @map("category_id")
+  category    Category? @relation(fields: [categoryId], references: [id])
+  amount      Decimal   @db.Decimal(10, 2)
+  currency    String    @default("RUB")
+  paymentDay  Int       @map("payment_day")
+  description String?
+  serverId    String?   @map("server_id")
+  server      Server?   @relation(fields: [serverId], references: [id])
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("recurring_payments")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NOTIFICATIONS CHANNELS (from buhgalteria)
+// ══════════════════════════════════════════════════════════════
+
+model NotificationChannel {
+  id             String   @id @default(uuid())
+  name           String
+  chatId         String   @map("chat_id")
+  isActive       Boolean  @default(true) @map("is_active")
+  notifyIncome   Boolean  @default(true) @map("notify_income")
+  notifyExpense  Boolean  @default(true) @map("notify_expense")
+  notifyInkas    Boolean  @default(false) @map("notify_inkas")
+  notifyPayment  Boolean  @default(true) @map("notify_payment")
+  notifyAd       Boolean  @default(false) @map("notify_ad")
+  notifyServer   Boolean  @default(true) @map("notify_server")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("notification_channels")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  MILESTONES & MONTHLY STATS (from buhgalteria)
+// ══════════════════════════════════════════════════════════════
+
+model Milestone {
+  id            String    @id @default(uuid())
+  title         String
+  targetAmount  Decimal   @map("target_amount") @db.Decimal(10, 2)
+  currentAmount Decimal   @default(0) @map("current_amount") @db.Decimal(10, 2)
+  type          String    @default("revenue")
+  isCompleted   Boolean   @default(false) @map("is_completed")
+  completedAt   DateTime? @map("completed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("milestones")
+}
+
+model MonthlyStats {
+  id            String   @id @default(uuid())
+  year          Int
+  month         Int
+  onlineCount   Int?     @map("online_count")
+  onlineWeekly  Int?     @map("online_weekly")
+  pdpInChannel  Int?     @map("pdp_in_channel")
+  avgCheck      Decimal? @map("avg_check") @db.Decimal(10, 2)
+  totalPayments Int?     @map("total_payments")
+  totalRefunds  Int?     @map("total_refunds")
+  tagPaid       Int?     @map("tag_paid")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([year, month])
+  @@map("monthly_stats")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  AUDIT LOG (from buhgalteria)
+// ══════════════════════════════════════════════════════════════
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?  @map("entity_id")
+  oldData   Json?    @map("old_data")
+  newData   Json?    @map("new_data")
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  API KEYS (for webhooks, from buhgalteria)
+// ══════════════════════════════════════════════════════════════
+
+model ApiKey {
+  id           String   @id @default(uuid())
+  name         String
+  keyHash      String   @unique @map("key_hash")
+  isActive     Boolean  @default(true) @map("is_active")
+  lastUsed     DateTime? @map("last_used")
+  requestCount Int      @default(0) @map("request_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("api_keys")
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ENUMS
+// ══════════════════════════════════════════════════════════════
+
+enum Role {
+  USER
+  ADMIN
+  EDITOR
+  INVESTOR
+}
+
+enum SubStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  TRIAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  EXPIRED
+}
+
+enum PaymentProvider {
+  YUKASSA
+  CRYPTOPAY
+  BALANCE
+  MANUAL
+  WEBHOOK
+}
+
+enum PaymentPurpose {
+  SUBSCRIPTION
+  TOPUP
+  GIFT
+}
+
+enum TariffType {
+  SUBSCRIPTION
+  TRAFFIC_ADDON
+}
+
+enum NewsType {
+  NEWS
+  PROMOTION
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+  PROMO
+}
+
+enum GiftStatus {
+  PENDING
+  CLAIMED
+  EXPIRED
+  CANCELLED
+}
+
+enum BalanceTransactionType {
+  TOPUP
+  REFERRAL_REWARD
+  PURCHASE
+  GIFT
+  REFUND
+}
+
+enum ReferralBonusType {
+  DAYS
+  MONEY
+}
+
+enum EmailVerificationType {
+  REGISTRATION
+  EMAIL_CHANGE
+  PASSWORD_RESET
+}
+
+enum BroadcastStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum BotMsgDirection {
+  IN
+  OUT
+}
+
+enum BotBlockType {
+  MESSAGE
+  CONDITION
+  ACTION
+  INPUT
+  DELAY
+  SPLIT
+  REDIRECT
+  NOTIFY_ADMIN
+  HTTP
+  REACTION
+}
+
+// From buhgalteria
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum InkasType {
+  DIVIDEND
+  RETURN_INV
+  INVESTMENT
+}
+
+enum ServerStatus {
+  ACTIVE
+  WARNING
+  EXPIRED
+  INACTIVE
+}
