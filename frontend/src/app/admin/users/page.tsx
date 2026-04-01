@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { Users, Search, ChevronLeft, ChevronRight, Loader2, Eye, Shield, Mail, MessageCircle, Calendar, DollarSign, Tag, Download, Upload } from 'lucide-react'
+import { Users, Search, ChevronLeft, ChevronRight, Loader2, Eye, Shield, Mail, MessageCircle, Calendar, DollarSign, Tag, Download, Upload, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const apiFetch = (path: string, opts?: RequestInit) =>
@@ -79,6 +79,16 @@ export default function UsersPage() {
           <p className="page-subtitle">{total} всего</p>
         </div>
         <div className="flex gap-2">
+          <button onClick={async () => {
+            toast.loading('Синхронизация...', { id: 'sync' })
+            try {
+              const res = await apiFetch('/sync-all', { method: 'POST' })
+              toast.success(`Синхронизировано: ${res.synced} из ${res.total}`, { id: 'sync' })
+              load()
+            } catch { toast.error('Ошибка синхронизации', { id: 'sync' }) }
+          }} className="bg-primary-600 text-white px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-primary-700 transition-colors">
+            <RefreshCw className="w-3.5 h-3.5" /> Синхронизировать
+          </button>
           <button onClick={() => downloadTemplate('users')} className="bg-gray-100 text-gray-700 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1.5 hover:bg-gray-200 transition-colors">
             <Download className="w-3.5 h-3.5" /> Шаблон Excel
           </button>

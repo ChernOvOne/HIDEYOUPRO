@@ -305,6 +305,34 @@ export async function adminImportExcelRoutes(app: FastifyInstance) {
       }
     }
 
-    return { imported, updated, errors }
+    // Auto-sync REMNAWAVE subscriptions for imported users
+    let synced = 0
+    try {
+      const { remnawave } = await import('../services/remnawave')
+      if (remnawave.configured) {
+        const usersWithUuid = await prisma.user.findMany({
+          where: { remnawaveUuid: { not: null } },
+          select: { id: true, remnawaveUuid: true },
+        })
+        const statusMap: Record<string, string> = {
+          ACTIVE: 'ACTIVE', DISABLED: 'INACTIVE', LIMITED: 'ACTIVE', EXPIRED: 'EXPIRED',
+        }
+        for (const u of usersWithUuid) {
+          try {
+            const rm = await remnawave.getUserByUuid(u.remnawaveUuid!)
+            await prisma.user.update({
+              where: { id: u.id },
+              data: {
+                subStatus: (statusMap[rm.status] || 'INACTIVE') as any,
+                subExpireAt: rm.expireAt ? new Date(rm.expireAt) : null,
+              },
+            })
+            synced++
+          } catch {}
+        }
+      }
+    } catch {}
+
+    return { imported, updated, synced, errors }
   })
 }

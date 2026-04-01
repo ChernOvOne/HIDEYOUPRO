@@ -226,6 +226,41 @@ export async function adminUserRoutes(app: FastifyInstance) {
     return { items }
   })
 
+  // POST /sync-all — sync all REMNAWAVE subscriptions
+  app.post('/sync-all', admin, async () => {
+    const { remnawave } = await import('../services/remnawave')
+    if (!remnawave.configured) return { error: 'REMNAWAVE не настроен', synced: 0 }
+
+    const users = await prisma.user.findMany({
+      where: { remnawaveUuid: { not: null } },
+      select: { id: true, remnawaveUuid: true, subStatus: true, subExpireAt: true },
+    })
+
+    const statusMap: Record<string, string> = {
+      ACTIVE: 'ACTIVE', DISABLED: 'INACTIVE', LIMITED: 'ACTIVE', EXPIRED: 'EXPIRED',
+    }
+
+    let synced = 0
+    let failed = 0
+    for (const u of users) {
+      try {
+        const rm = await remnawave.getUserByUuid(u.remnawaveUuid!)
+        const newStatus = statusMap[rm.status] || 'INACTIVE'
+        const newExpire = rm.expireAt ? new Date(rm.expireAt) : null
+
+        if (newStatus !== u.subStatus || newExpire?.getTime() !== u.subExpireAt?.getTime()) {
+          await prisma.user.update({
+            where: { id: u.id },
+            data: { subStatus: newStatus as any, subExpireAt: newExpire },
+          })
+          synced++
+        }
+      } catch { failed++ }
+    }
+
+    return { ok: true, total: users.length, synced, failed }
+  })
+
   // POST /:id/reset-password — set new password
   app.post<{ Params: { id: string } }>('/:id/reset-password', { preHandler: [app.adminStrict] }, async (req) => {
     const { id } = req.params
