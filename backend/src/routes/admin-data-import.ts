@@ -814,9 +814,10 @@ async function runImport(session: ImportSession, dryRun: boolean) {
   // ── Process each mapped file ────────────────────────────
 
   for (const fileCfg of mapping.files) {
-    const fileRecord = session.files.find(f => f.fileId === fileCfg.fileId)
+    const cfgId = (fileCfg as any).fileId || (fileCfg as any).id
+    const fileRecord = session.files.find(f => f.fileId === cfgId)
     if (!fileRecord) {
-      errors.push(`Файл ${fileCfg.fileId} не найден в сессии`)
+      errors.push(`Файл ${cfgId} не найден в сессии`)
       continue
     }
 
