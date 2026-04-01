@@ -31,6 +31,32 @@ export async function authRoutes(app: FastifyInstance) {
       return reply.status(401).send({ error: 'Неверный логин или пароль' })
     }
 
+    // Sync REMNAWAVE if not linked yet
+    if (!user.remnawaveUuid) {
+      try {
+        const { remnawave } = await import('../services/remnawave')
+        if (remnawave.configured) {
+          const rm = user.telegramId
+            ? await remnawave.getUserByTelegramId(user.telegramId).catch(() => null)
+            : user.email
+              ? await remnawave.getUserByEmail(user.email).catch(() => null)
+              : null
+          if (rm) {
+            const statusMap: Record<string, string> = { ACTIVE: 'ACTIVE', DISABLED: 'INACTIVE', LIMITED: 'ACTIVE', EXPIRED: 'EXPIRED' }
+            await prisma.user.update({
+              where: { id: user.id },
+              data: {
+                remnawaveUuid: rm.uuid,
+                subStatus: (statusMap[rm.status] ?? 'INACTIVE') as any,
+                subExpireAt: rm.expireAt ? new Date(rm.expireAt) : null,
+                subLink: remnawave.getSubscriptionUrl(rm.uuid, rm.subscriptionUrl),
+              },
+            })
+          }
+        }
+      } catch {}
+    }
+
     await prisma.user.update({
       where: { id: user.id },
       data:  { lastLoginAt: new Date(), lastIp: req.ip },

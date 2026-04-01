@@ -88,7 +88,19 @@ export async function adminUserRoutes(app: FastifyInstance) {
     if (user.remnawaveUuid) {
       try {
         const { remnawave } = await import('../services/remnawave')
-        rmData = await remnawave.getUserByUuid(user.remnawaveUuid)
+        const raw = await remnawave.getUserByUuid(user.remnawaveUuid)
+
+        // Flatten userTraffic into rmData for frontend compatibility
+        const ut = raw.userTraffic || {}
+        rmData = {
+          ...raw,
+          usedTrafficBytes: ut.usedTrafficBytes || 0,
+          lifetimeUsedTrafficBytes: ut.lifetimeUsedTrafficBytes || 0,
+          onlineAt: ut.onlineAt || raw.onlineAt,
+          firstConnectedAt: ut.firstConnectedAt || raw.firstConnectedAt,
+          subLastOpenedAt: raw.subRevokedAt,
+          subLastUserAgent: raw.trojanPassword ? 'Trojan' : raw.vlessUuid ? 'VLESS' : null,
+        }
 
         // Sync local status silently
         const statusMap: Record<string, string> = { ACTIVE: 'ACTIVE', DISABLED: 'INACTIVE', LIMITED: 'ACTIVE', EXPIRED: 'EXPIRED' }

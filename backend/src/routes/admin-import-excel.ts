@@ -232,7 +232,15 @@ export async function adminImportExcelRoutes(app: FastifyInstance) {
 
       const cell = (key: string): string => {
         if (!headers[key]) return ''
-        return String(row.getCell(headers[key]).value ?? '').trim()
+        const raw = row.getCell(headers[key]).value
+        if (raw === null || raw === undefined) return ''
+        // ExcelJS may return objects for emails/hyperlinks: { text, hyperlink }
+        if (typeof raw === 'object' && raw !== null) {
+          if ('text' in raw) return String((raw as any).text).trim()
+          if ('result' in raw) return String((raw as any).result).trim()
+          return String(JSON.stringify(raw))
+        }
+        return String(raw).trim()
       }
 
       const telegramId = cell('telegram_id') || null
