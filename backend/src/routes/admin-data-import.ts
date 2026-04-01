@@ -880,15 +880,16 @@ async function runImport(session: ImportSession, dryRun: boolean) {
           continue
         }
 
-        // Find existing user
+        // Find existing user by telegramId, email, or remnawaveUuid
         let existingUser = null as any
         if (telegramId) {
-          existingUser = dryRun
-            ? await prisma.user.findUnique({ where: { telegramId } })
-            : await prisma.user.findUnique({ where: { telegramId } })
+          existingUser = await prisma.user.findUnique({ where: { telegramId } })
         }
         if (!existingUser && email) {
           existingUser = await prisma.user.findUnique({ where: { email } })
+        }
+        if (!existingUser && remnawaveUuid) {
+          existingUser = await prisma.user.findFirst({ where: { remnawaveUuid } })
         }
 
         const userData: any = {}
@@ -936,10 +937,15 @@ async function runImport(session: ImportSession, dryRun: boolean) {
             stats.users.update++
             if (legacyId) legacyToDbId.set(legacyId, existingUser.id)
           } else {
-            const newUser = await prisma.user.create({ data: userData })
-            rollbackData.push({ action: 'create', table: 'user', id: newUser.id })
-            stats.users.create++
-            if (legacyId) legacyToDbId.set(legacyId, newUser.id)
+            try {
+              const newUser = await prisma.user.create({ data: userData })
+              rollbackData.push({ action: 'create', table: 'user', id: newUser.id })
+              stats.users.create++
+              if (legacyId) legacyToDbId.set(legacyId, newUser.id)
+            } catch (e: any) {
+              errors.push(`Строка ${i + 2}: ${e.message?.includes('Unique') ? 'Дубликат (уже существует)' : e.message?.substring(0, 80)}`)
+              stats.users.skip++
+            }
           }
 
           if (legacyId && referrerId) {
