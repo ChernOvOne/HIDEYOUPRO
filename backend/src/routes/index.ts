@@ -1,12 +1,14 @@
 import type { FastifyInstance } from 'fastify'
-import { authRoutes }           from './auth'
-import { adminRoutes }          from './admin'
-import { setupRoutes }          from './setup'
-import { adminUserRoutes }      from './admin-users'
-import { adminAccountingRoutes } from './admin-accounting'
-import { adminPartnerRoutes }   from './admin-partners'
-import { adminServerRoutes }    from './admin-servers'
-import { adminMarketingRoutes } from './admin-marketing'
+import { authRoutes }             from './auth'
+import { adminRoutes }            from './admin'
+import { setupRoutes }            from './setup'
+import { adminUserRoutes }        from './admin-users'
+import { adminAccountingRoutes }  from './admin-accounting'
+import { adminPartnerRoutes }     from './admin-partners'
+import { adminServerRoutes }      from './admin-servers'
+import { adminMarketingRoutes }   from './admin-marketing'
+import { adminTariffRoutes }      from './admin-tariffs'
+import { adminPaymentRoutes, paymentWebhookRoutes } from './admin-payments'
 
 export async function registerRoutes(app: FastifyInstance) {
   app.get('/health', async () => ({
@@ -23,12 +25,17 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(setupRoutes, { prefix: '/api/setup' })
 
   // Admin
-  await app.register(adminRoutes,           { prefix: '/api/admin' })
-  await app.register(adminUserRoutes,       { prefix: '/api/admin/users' })
-  await app.register(adminAccountingRoutes, { prefix: '/api/admin/accounting' })
-  await app.register(adminPartnerRoutes,    { prefix: '/api/admin/partners' })
-  await app.register(adminServerRoutes,     { prefix: '/api/admin/servers' })
-  await app.register(adminMarketingRoutes,  { prefix: '/api/admin/marketing' })
+  await app.register(adminRoutes,            { prefix: '/api/admin' })
+  await app.register(adminUserRoutes,        { prefix: '/api/admin/users' })
+  await app.register(adminAccountingRoutes,  { prefix: '/api/admin/accounting' })
+  await app.register(adminPartnerRoutes,     { prefix: '/api/admin/partners' })
+  await app.register(adminServerRoutes,      { prefix: '/api/admin/servers' })
+  await app.register(adminMarketingRoutes,   { prefix: '/api/admin/marketing' })
+  await app.register(adminTariffRoutes,      { prefix: '/api/admin/tariffs' })
+  await app.register(adminPaymentRoutes,     { prefix: '/api/admin/payments' })
+
+  // Public webhooks (no auth middleware)
+  await app.register(paymentWebhookRoutes,   { prefix: '/api/payments' })
 
   // Uploads
   app.register(import('@fastify/static'), { root: '/app/uploads', prefix: '/uploads/', decorateReply: false })
