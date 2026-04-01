@@ -7,7 +7,7 @@ import {
   LayoutDashboard, Users, CreditCard, Package, Newspaper, Wifi, BookOpen,
   Tag, MessageCircle, TrendingUp, Globe, Upload, Settings, LogOut, Menu, X,
   DollarSign, Handshake, Megaphone, Server, FileBarChart, GitCompare, Bot,
-  Loader2,
+  Loader2, Bell, Send, PanelLeft,
 } from 'lucide-react'
 import { api } from '@/lib/api'
 
@@ -21,9 +21,14 @@ const NAV = [
   { href: '/admin/servers',      icon: Server,          label: 'Серверы',      group: 'finance' },
   { href: '/admin/marketing',    icon: Megaphone,       label: 'Маркетинг',    group: 'marketing' },
   { href: '/admin/communications', icon: MessageCircle, label: 'Коммуникации', group: 'tools' },
+  { href: '/admin/broadcast',     icon: Send,           label: 'Рассылки',     group: 'tools' },
   { href: '/admin/bot/constructor', icon: Bot,          label: 'Конструктор',  group: 'tools' },
+  { href: '/admin/bot',           icon: MessageCircle,  label: 'Чат бота',     group: 'tools' },
+  { href: '/admin/notifications', icon: Bell,           label: 'Уведомления',  group: 'tools' },
   { href: '/admin/reports',      icon: FileBarChart,    label: 'Отчёты',       group: 'analytics' },
   { href: '/admin/analytics',    icon: TrendingUp,      label: 'Аналитика',    group: 'analytics' },
+  { href: '/admin/compare',      icon: GitCompare,      label: 'Сравнение',    group: 'analytics' },
+  { href: '/admin/landing',      icon: PanelLeft,       label: 'Лендинг',      group: 'system' },
   { href: '/admin/settings',     icon: Settings,        label: 'Настройки',    group: 'system' },
 ]
 

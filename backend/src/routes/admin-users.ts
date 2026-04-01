@@ -45,6 +45,24 @@ export async function adminUserRoutes(app: FastifyInstance) {
       prisma.user.count({ where }),
     ])
 
+    // CSV export
+    if ((req.query as any).export === 'csv') {
+      const allUsers = await prisma.user.findMany({
+        where,
+        select: {
+          id: true, email: true, telegramId: true, telegramName: true,
+          subStatus: true, subExpireAt: true, balance: true, totalPaid: true,
+          utmCode: true, referralCode: true, createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+      const header = 'id,email,telegramId,telegramName,status,expireAt,balance,totalPaid,utm,refCode,createdAt'
+      const rows = allUsers.map(u =>
+        [u.id, u.email || '', u.telegramId || '', u.telegramName || '', u.subStatus, u.subExpireAt?.toISOString() || '', Number(u.balance), Number(u.totalPaid), u.utmCode || '', u.referralCode || '', u.createdAt.toISOString()].join(',')
+      )
+      return { csv: header + '\n' + rows.join('\n'), total: allUsers.length }
+    }
+
     return { users, total, page: qs.page, pages: Math.ceil(total / qs.limit) }
   })
 
