@@ -1,33 +1,20 @@
 import axios from 'axios'
 import { config } from '../config'
 import { logger } from '../utils/logger'
-import { prisma } from '../db'
 
 class RemnawaveService {
-  private baseUrl: string
-  private token: string
-
-  constructor() {
-    this.baseUrl = config.remnawave.url
-    this.token = config.remnawave.token
-  }
-
   private async getConfig() {
-    // Try DB settings first (from setup wizard)
-    if (!this.token) {
-      const dbUrl = await prisma.setting.findUnique({ where: { key: 'remnawave_url' } })
-      const dbToken = await prisma.setting.findUnique({ where: { key: 'remnawave_token' } })
-      if (dbUrl) this.baseUrl = dbUrl.value
-      if (dbToken) this.token = dbToken.value
-    }
+    // Always read from dynamic config (env + DB fallback)
+    const url   = config.remnawave.url
+    const token = config.remnawave.token
     return {
-      baseURL: `${this.baseUrl}/api`,
-      headers: { Authorization: `Bearer ${this.token}` },
+      baseURL: `${url.replace(/\/$/, '')}/api`,
+      headers: { Authorization: `Bearer ${token}` },
       timeout: 15000,
     }
   }
 
-  get configured() { return !!(this.token || config.remnawave.configured) }
+  get configured() { return config.remnawave.configured }
 
   async getUsers(params?: { offset?: number; limit?: number }) {
     const cfg = await this.getConfig()
@@ -98,11 +85,11 @@ class RemnawaveService {
   }
 
   getSubscriptionUrl(uuid: string, customUrl?: string) {
-    if (customUrl) return `${this.baseUrl}${customUrl}`
-    return `${this.baseUrl}/sub/${uuid}`
+    const url = config.remnawave.url.replace(/\/$/, '')
+    if (customUrl) return `${url}${customUrl}`
+    return `${url}/sub/${uuid}`
   }
 
-  // ── Health / Stats ──────────────────────────────────────────
   async getHealth() {
     try {
       const cfg = await this.getConfig()

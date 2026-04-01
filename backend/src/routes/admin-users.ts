@@ -102,7 +102,9 @@ export async function adminUserRoutes(app: FastifyInstance) {
           user.subStatus = newStatus as any
           user.subExpireAt = newExpire
         }
-      } catch {}
+      } catch (err: any) {
+        console.error(`REMNAWAVE sync failed for ${user.remnawaveUuid}:`, err?.message || err, err?.response?.status)
+      }
     }
 
     return { ...user, rmData }
