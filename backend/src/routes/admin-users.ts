@@ -92,14 +92,26 @@ export async function adminUserRoutes(app: FastifyInstance) {
 
         // Flatten userTraffic into rmData for frontend compatibility
         const ut = raw.userTraffic || {}
+
+        // Load devices
+        let devices: any[] = []
+        try {
+          const devData = await remnawave.getDevices(user.remnawaveUuid!)
+          devices = devData.devices || devData || []
+        } catch {}
+
         rmData = {
           ...raw,
           usedTrafficBytes: ut.usedTrafficBytes || 0,
           lifetimeUsedTrafficBytes: ut.lifetimeUsedTrafficBytes || 0,
-          onlineAt: ut.onlineAt || raw.onlineAt,
-          firstConnectedAt: ut.firstConnectedAt || raw.firstConnectedAt,
-          subLastOpenedAt: raw.subRevokedAt,
-          subLastUserAgent: raw.trojanPassword ? 'Trojan' : raw.vlessUuid ? 'VLESS' : null,
+          onlineAt: ut.onlineAt,
+          firstConnectedAt: ut.firstConnectedAt,
+          lastConnectedNodeUuid: ut.lastConnectedNodeUuid,
+          // Latest device user agent
+          subLastUserAgent: devices.length > 0
+            ? devices.sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]?.userAgent
+            : null,
+          devices,
         }
 
         // Sync local status silently

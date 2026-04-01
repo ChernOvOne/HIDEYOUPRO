@@ -58,7 +58,7 @@ class RemnawaveService {
 
   async getDevices(uuid: string) {
     const cfg = await this.getConfig()
-    const { data } = await axios.get(`/users/${uuid}/devices`, cfg)
+    const { data } = await axios.get(`/hwid/devices/${uuid}`, cfg)
     return data.response ?? data
   }
 
@@ -80,7 +80,7 @@ class RemnawaveService {
 
   async deleteDevice(uuid: string, hwid: string) {
     const cfg = await this.getConfig()
-    const { data } = await axios.delete(`/users/${uuid}/devices/${hwid}`, cfg)
+    const { data } = await axios.delete(`/hwid/devices/${hwid}`, cfg)
     return data.response ?? data
   }
 

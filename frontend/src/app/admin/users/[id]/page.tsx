@@ -625,10 +625,15 @@ export default function UserDetailPage() {
                           </p>
                         </div>
 
-                        <div className="flex items-center gap-2 ml-2 flex-shrink-0">
-                          <span className="text-[10px] text-gray-400">
-                            {d.createdAt ? new Date(d.createdAt).toLocaleDateString('ru') : ''}
-                          </span>
+                        <div className="flex items-center gap-2 ml-2 flex-shrink-0 text-right">
+                          <div>
+                            <p className="text-[10px] text-gray-400">
+                              {d.updatedAt ? new Date(d.updatedAt).toLocaleString('ru', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}
+                            </p>
+                            <p className="text-[9px] text-gray-300">
+                              {d.createdAt ? 'с ' + new Date(d.createdAt).toLocaleDateString('ru') : ''}
+                            </p>
+                          </div>
                           <button
                             onClick={() => action(
                               () => adminApi.delete(`/users/${id}/devices/${d.hwid}`),
