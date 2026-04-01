@@ -1038,10 +1038,24 @@ async function runImport(session: ImportSession, dryRun: boolean) {
 
         const amountStr = regexFields.amount || getVal(row, 'amount')
         const amount = amountStr ? parseFloat(amountStr.replace(',', '.').replace(/\s/g, '')) : 0
-        const dateStr = regexFields.date || getVal(row, 'date')
-        const payDate = parseDate(dateStr) || new Date()
-        const status = regexFields.status || getVal(row, 'status') || 'PAID'
+        const createdDateStr = regexFields.createdAt || getVal(row, 'createdAt')
+        const paidDateStr = regexFields.paidAt || getVal(row, 'paidAt')
+        const createdDate = parseDate(createdDateStr) || undefined
+        const paidDate = parseDate(paidDateStr) || undefined
+        const rawStatus = regexFields.status || getVal(row, 'status') || ''
         const description = regexFields.description || getVal(row, 'description') || ''
+        const method = regexFields.method || getVal(row, 'method') || ''
+        const externalId = regexFields.externalId || getVal(row, 'externalId') || ''
+        const currency = regexFields.currency || getVal(row, 'currency') || 'RUB'
+
+        // Parse status
+        const statusMap: Record<string, string> = {
+          'оплачен': 'PAID', 'paid': 'PAID', 'успешно': 'PAID', 'succeeded': 'PAID',
+          'ожидание': 'PENDING', 'pending': 'PENDING', 'в обработке': 'PENDING',
+          'отменен': 'FAILED', 'отменён': 'FAILED', 'failed': 'FAILED', 'canceled': 'FAILED', 'ошибка': 'FAILED',
+          'возврат': 'REFUNDED', 'refunded': 'REFUNDED',
+        }
+        const status = statusMap[rawStatus.toLowerCase().trim()] || (rawStatus.toUpperCase() === 'PAID' ? 'PAID' : rawStatus ? 'FAILED' : 'PAID')
 
         // Try to find the user
         let userId: string | null = null
@@ -1093,14 +1107,14 @@ async function runImport(session: ImportSession, dryRun: boolean) {
           }
         }
 
-        // Map status string to enum
-        const statusMap: Record<string, string> = {
+        // Map status string to enum (use statusMap from above)
+        const statusMap2: Record<string, string> = {
           'оплачен': 'PAID', 'paid': 'PAID', 'успешно': 'PAID',
           'ожидание': 'PENDING', 'pending': 'PENDING',
           'ошибка': 'FAILED', 'failed': 'FAILED',
           'возврат': 'REFUNDED', 'refunded': 'REFUNDED',
         }
-        const normalizedStatus = statusMap[status.toLowerCase()] || status.toUpperCase()
+        const normalizedStatus = statusMap2[status.toLowerCase()] || status.toUpperCase()
         const validStatuses = ['PENDING', 'PAID', 'FAILED', 'REFUNDED', 'EXPIRED']
         const finalStatus = validStatuses.includes(normalizedStatus) ? normalizedStatus : 'PAID'
 
@@ -1121,7 +1135,7 @@ async function runImport(session: ImportSession, dryRun: boolean) {
           if (stats.payments.samples.length < 5) {
             stats.payments.samples.push({
               amount,
-              date: payDate.toISOString(),
+              date: (paidDate || createdDate || new Date()).toISOString(),
               status: finalStatus,
               description: description.slice(0, 60),
               linked: !!userId,
@@ -1134,17 +1148,20 @@ async function runImport(session: ImportSession, dryRun: boolean) {
             continue
           }
 
+          const cleanDesc = method ? (method + (description ? ' · ' + description.replace(/\[ID\d+\]\s*/g, '').trim() : '')) : description.replace(/\[ID\d+\]\s*/g, '').trim()
+
           const payment = await prisma.payment.create({
             data: {
               userId,
               amount,
-              currency: 'RUB',
-              status: finalStatus as any,
-              provider: 'MANUAL' as any,
+              currency: currency || 'RUB',
+              status: status as any,
+              provider: 'YUKASSA' as any,
               purpose: 'SUBSCRIPTION' as any,
-              description: description || null,
-              paidAt: finalStatus === 'PAID' ? payDate : null,
-              createdAt: payDate,
+              externalId: externalId || undefined,
+              description: cleanDesc.substring(0, 250) || null,
+              paidAt: paidDate || createdDate || undefined,
+              createdAt: createdDate || undefined,
             },
           })
           rollbackData.push({ action: 'create', table: 'payment', id: payment.id })
@@ -1224,6 +1241,25 @@ async function runImport(session: ImportSession, dryRun: boolean) {
         stats.referrals.link++
       }
     }
+  }
+
+  // Update user payment stats (only PAID count)
+  if (!dryRun) {
+    try {
+      const paidStats = await prisma.payment.groupBy({
+        by: ['userId'],
+        where: { status: 'PAID' },
+        _sum: { amount: true },
+        _count: true,
+      })
+      for (const s of paidStats) {
+        await prisma.user.update({
+          where: { id: s.userId },
+          data: { totalPaid: Number(s._sum.amount || 0), paymentsCount: s._count },
+        })
+      }
+      console.log('Updated payment stats for', paidStats.length, 'users')
+    } catch {}
   }
 
   // Save rollback data
