@@ -992,19 +992,24 @@ export default function AdminImportExport() {
 
                         {/* Match indicator */}
                         <div className={`flex items-center justify-between p-3 rounded-lg ${
-                          matchCount > 0 ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-100'
+                          extractedSamples.some(v => v !== '—') ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-100'
                         }`}>
                           <div className="flex items-center gap-2">
-                            {matchCount > 0
+                            {extractedSamples.some(v => v !== '—')
                               ? <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                               : <AlertCircle className="w-4 h-4 text-gray-400" />
                             }
-                            <span className={`text-xs font-medium ${matchCount > 0 ? 'text-emerald-700' : 'text-gray-500'}`}>
-                              {matchCount > 0
-                                ? `Найдено совпадений в примерах: ${matchCount} из ${extractedSamples.filter(v => v !== '—').length}`
-                                : 'Совпадений в примерах не найдено (проверьте настройки)'
-                              }
-                            </span>
+                            <div>
+                              <span className={`text-xs font-medium ${extractedSamples.some(v => v !== '—') ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                {extractedSamples.some(v => v !== '—')
+                                  ? `Извлечение работает (${extractedSamples.filter(v => v !== '—').length} из ${extractedSamples.length} примеров)`
+                                  : link.sourceRegex ? 'Regex не извлёк данные — проверьте формулу' : 'Связь настроена (без regex)'
+                                }
+                              </span>
+                              <p className="text-[10px] text-gray-400 mt-0.5">
+                                Здесь показаны только первые 5 строк. Полная статистика совпадений — на шаге "Предварительный просмотр"
+                              </p>
+                            </div>
                           </div>
                           <button onClick={() => removeCrossLink(link.id)} className="text-xs text-red-400 hover:text-red-600">Удалить</button>
                         </div>
