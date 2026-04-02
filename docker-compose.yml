@@ -57,9 +57,11 @@ services:
       - ./data:/app/data
       - uploads_data:/app/uploads
     networks:
-      - hyp_internal
-      - hyp_external
-      - hideyou_ext
+      hyp_internal: {}
+      hyp_external: {}
+      hideyou_ext:
+        aliases:
+          - pro-backend
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
       interval: 30s
@@ -86,8 +88,10 @@ services:
     depends_on:
       - backend
     networks:
-      - hyp_internal
-      - hideyou_ext
+      hyp_internal: {}
+      hideyou_ext:
+        aliases:
+          - pro-frontend
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
       interval: 30s
