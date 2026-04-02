@@ -273,11 +273,19 @@ class PaymentService {
       )
     }
 
+    // Calculate new expire date for notification
+    const newExpireAt = new Date(Date.now() + effectiveDays * 86400_000)
+
     logger.info(`Payment confirmed: ${orderId}, user: ${user.id}, +${effectiveDays} days`)
 
-    // Send notification
-    await notifications.paymentConfirmed(user.id, Number(payment.amount), tariff.name).catch(err =>
+    // Send notification (TG + Email)
+    await notifications.paymentConfirmed(user.id, tariff.name, newExpireAt).catch(err =>
       logger.warn('Payment notification failed:', err)
+    )
+
+    // Trigger payment funnel
+    import('./funnel-engine').then(({ triggerEvent }) =>
+      triggerEvent('payment_success', user.id, { tariffName: tariff.name, amount: String(payment.amount) }).catch(() => {})
     )
   }
 
@@ -292,18 +300,52 @@ class PaymentService {
     })
     if (existing) return
 
+    const rewardType = config.referral.rewardType // 'days' | 'balance' | 'both'
     const bonusDays = config.referral.bonusDays
 
-    await prisma.referralBonus.create({
-      data: {
-        referrerId,
-        triggeredByPaymentId: paymentId,
-        bonusType:  'DAYS',
-        bonusDays,
-      },
-    })
+    // Days bonus
+    const applyDays = rewardType === 'days' || rewardType === 'both'
+    if (applyDays) {
+      await prisma.referralBonus.create({
+        data: {
+          referrerId,
+          triggeredByPaymentId: paymentId,
+          bonusType:  'DAYS',
+          bonusDays,
+        },
+      })
+      await notifications.referralBonus(referrerId, bonusDays).catch(() => {})
+      logger.info(`Referral days accumulated: +${bonusDays} days for ${referrerId}`)
+    }
 
-    logger.info(`Referral days accumulated: +${bonusDays} days for ${referrerId}`)
+    // Money bonus
+    const applyMoney = rewardType === 'balance' || rewardType === 'both'
+    if (applyMoney) {
+      const amount = config.referral.rewardAmount
+      if (!applyDays) {
+        await prisma.referralBonus.create({
+          data: {
+            referrerId,
+            triggeredByPaymentId: paymentId,
+            bonusType:    'MONEY',
+            bonusAmount:  amount,
+          },
+        })
+      }
+      await balanceService.credit({
+        userId:      referrerId,
+        amount,
+        type:        'REFERRAL',
+        description: `Реферальный бонус`,
+      })
+      await notifications.referralBonusMoney(referrerId, amount).catch(() => {})
+      logger.info(`Referral money bonus: +${amount} RUB for ${referrerId}`)
+    }
+
+    // Trigger referral funnel
+    import('./funnel-engine').then(({ triggerEvent }) =>
+      triggerEvent('referral_paid', referrerId, { refBonusDays: String(bonusDays) }).catch(() => {})
+    )
   }
 }
 
