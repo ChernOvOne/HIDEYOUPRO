@@ -1,7 +1,7 @@
 # HIDEYOU PRO — Full Code Audit
 
 **Date:** 2026-04-02  
-**Status:** Phase 1-4 DONE, Phase 5 pending
+**Status:** ALL PHASES COMPLETE
 
 **Progress:**
 - Phase 1 (Critical bugs): DONE — C1-C10 fixed
@@ -10,7 +10,15 @@
 - Phase 4 (Code quality): DONE — M1(partial),M3,M11,M13,M14 fixed
   - 6 files freed from @ts-nocheck, 10 remain (need schema migration)
   - M5 (audit logging) deferred — requires per-endpoint changes
-- Phase 5 (Polish): PENDING
+- Phase 5 (Polish): DONE — M8,M10,M6,M16,L1,L3,L4,L8 fixed
+
+**Remaining backlog:**
+- 10 files still have @ts-nocheck (users.ts, public.ts, news.ts, instructions.ts,
+  notifications.ts, proxies.ts, upload.ts, admin-landing.ts, admin-import.ts,
+  migrate-legacy.ts) — these need Prisma schema field alignment
+- M5 audit logging — needs helper + per-endpoint integration
+- M2 RBAC (EDITOR vs ADMIN distinction) — needs design decision
+- i18n, a11y, comprehensive test suite
 
 ---
 
