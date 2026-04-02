@@ -1,33 +1,68 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
+import { Inter } from 'next/font/google'
 import { Toaster } from 'react-hot-toast'
+import { TMAProvider } from '@/providers/TMAProvider'
+import { ThemeProvider } from '@/providers/ThemeProvider'
+import Script from 'next/script'
 import './globals.css'
 
+const inter = Inter({ subsets: ['latin', 'cyrillic'], weight: ['300', '400', '500', '600', '700', '800'] })
+
 export const metadata: Metadata = {
-  title: 'HIDEYOU PRO',
-  description: 'VPN Management + Accounting Platform',
+  title: {
+    default:  'HIDEYOU PRO',
+    template: '%s — HIDEYOU PRO',
+  },
+  description:  'Быстрый и надёжный VPN. Подключайтесь с любого устройства.',
+  icons:        { icon: '/favicon.ico' },
+  robots: { index: true, follow: true },
+}
+
+export const viewport: Viewport = {
+  themeColor:    '#0a0a12',
+  width:         'device-width',
+  initialScale:  1,
+  maximumScale:  1,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru">
-      <body>
-        {children}
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            duration: 3000,
-            style: {
-              background: '#fff',
-              color: '#2C2C2A',
-              border: '0.5px solid #D3D1C7',
-              borderRadius: '10px',
-              fontSize: '13px',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-            },
-            success: { iconTheme: { primary: '#1D9E75', secondary: '#fff' } },
-            error:   { iconTheme: { primary: '#E24B4A', secondary: '#fff' } },
-          }}
+    <html lang="ru" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){try{var t=localStorage.getItem('hideyou-theme');
+          if(t==='light')document.documentElement.classList.add('light');
+          else if(t==='system'||!t){if(window.matchMedia('(prefers-color-scheme:light)').matches)document.documentElement.classList.add('light')}
+          }catch(e){}})()
+        `}} />
+        <Script
+          src="https://telegram.org/js/telegram-web-app.js"
+          strategy="beforeInteractive"
         />
+      </head>
+      <body className={`${inter.className} antialiased`}
+            style={{ background: 'var(--surface-0)', color: 'var(--text-primary)' }}>
+        <ThemeProvider>
+          <TMAProvider>
+            {children}
+          </TMAProvider>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 3500,
+              style: {
+                background: 'var(--surface-2)',
+                backdropFilter: 'blur(20px)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--glass-border)',
+                borderRadius: '14px',
+                fontSize: '14px',
+              },
+              success: { iconTheme: { primary: '#34d399', secondary: '#fff' } },
+              error:   { iconTheme: { primary: '#f87171', secondary: '#fff' } },
+            }}
+          />
+        </ThemeProvider>
       </body>
     </html>
   )

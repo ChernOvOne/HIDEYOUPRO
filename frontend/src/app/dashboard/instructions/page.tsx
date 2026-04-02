@@ -73,9 +73,9 @@ function detectPlatformSlug(): string {
   return 'windows'
 }
 
-interface Step { id: string; order: number; text: string; imageUrl?: string }
-interface App { id: string; name: string; icon: string; isFeatured: boolean; storeUrl?: string; deeplink?: string; steps: Step[] }
-interface Platform { id: string; slug: string; name: string; icon: string; sortOrder: number; apps: App[] }
+interface Step { id: string; sortOrder: number; title: string; content: string; imageUrl?: string }
+interface App { id: string; name: string; icon: string; sortOrder: number; deeplink?: string; steps: Step[] }
+interface Platform { id: string; name: string; icon: string; sortOrder: number; apps: App[]; slug?: string }
 
 // ── WIZARD STEPS ──
 const WIZARD_STEPS = ['platform', 'app', 'setup'] as const
@@ -92,20 +92,22 @@ export default function InstructionsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/instructions/platforms').then(r => r.json()),
+      fetch('/api/instructions/platforms').then(r => r.json()).catch(() => []),
       userApi.subscription().catch(() => null),
     ]).then(([pls, sub]) => {
-      setPlatforms(pls)
+      // Add slug from name if missing
+      const withSlug = (pls || []).map((p: any) => ({ ...p, slug: p.slug || p.name?.toLowerCase().replace(/\s+/g, '') || p.id }))
+      setPlatforms(withSlug)
       if (sub?.subUrl) setSubUrl(sub.subUrl)
       const detected = detectPlatformSlug()
-      const pl = pls.find((p: Platform) => p.slug === detected) || pls[0]
-      if (pl) setActiveSlug(pl.slug)
+      const pl = withSlug.find((p: Platform) => p.slug === detected) || withSlug[0]
+      if (pl) setActiveSlug(pl.slug || pl.id)
       setLoading(false)
     })
   }, [])
 
   const platform = platforms.find(p => p.slug === activeSlug)
-  const sortedApps = platform ? [...platform.apps].sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0)) : []
+  const sortedApps = platform ? [...platform.apps].sort((a, b) => a.sortOrder - b.sortOrder) : []
   const selectedApp = sortedApps.find(a => a.id === activeApp)
   const getDeeplink = (t?: string) => t && subUrl ? t.replace('{url}', encodeURIComponent(subUrl)) : null
 
@@ -143,7 +145,7 @@ export default function InstructionsPage() {
     <div className="text-center py-20 text-sm" style={{ color: 'var(--text-tertiary)' }}>Инструкции ещё не добавлены</div>
   )
 
-  const steps = selectedApp ? [...selectedApp.steps].sort((a, b) => a.order - b.order) : []
+  const steps = selectedApp ? [...selectedApp.steps].sort((a, b) => a.sortOrder - b.sortOrder) : []
 
   return (
     <div className="max-w-3xl lg:max-w-4xl mx-auto pb-8 space-y-6">
@@ -218,15 +220,15 @@ export default function InstructionsPage() {
             {sortedApps.map(app => (
               <button key={app.id} onClick={() => selectApp(app.id)}
                       className="flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 text-left group"
-                      style={{ background: 'var(--glass-bg)', border: app.isFeatured ? '1.5px solid rgba(6,182,212,0.2)' : '1px solid var(--glass-border)' }}>
+                      style={{ background: 'var(--glass-bg)', border: false /* isFeatured */ ? '1.5px solid rgba(6,182,212,0.2)' : '1px solid var(--glass-border)' }}>
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                     style={{ background: app.isFeatured ? 'rgba(6,182,212,0.1)' : 'var(--glass-hover)' }}>
-                  <AppIconRender icon={app.icon} size="w-6 h-6" color={app.isFeatured ? 'var(--accent-1)' : 'var(--text-tertiary)'} />
+                     style={{ background: false /* isFeatured */ ? 'rgba(6,182,212,0.1)' : 'var(--glass-hover)' }}>
+                  <AppIconRender icon={app.icon} size="w-6 h-6" color={false /* isFeatured */ ? 'var(--accent-1)' : 'var(--text-tertiary)'} />
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold">{app.name}</p>
-                    {app.isFeatured && (
+                    {false /* isFeatured */ && (
                       <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold"
                             style={{ background: 'rgba(6,182,212,0.1)', color: 'var(--accent-1)' }}>
                         <Zap className="w-3 h-3" /> Лучший
@@ -234,7 +236,7 @@ export default function InstructionsPage() {
                     )}
                   </div>
                   <p className="text-xs mt-0.5" style={{ color: 'var(--text-tertiary)' }}>
-                    {app.storeUrl ? 'Бесплатное' : 'Настройка вручную'}
+                    {app.deeplink ? 'Бесплатное' : 'Настройка вручную'}
                   </p>
                 </div>
                 <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'var(--text-tertiary)' }} />
@@ -294,7 +296,7 @@ export default function InstructionsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}
-                             dangerouslySetInnerHTML={{ __html: renderMd(step.text.replace(/\{url\}/g, subUrl || '{url}')) }} />
+                             dangerouslySetInnerHTML={{ __html: renderMd((step.content || '').replace(/\{url\}/g, subUrl || '{url}')) }} />
                         {meta.image && (
                           <img src={meta.image} alt={`Шаг ${idx + 1}`}
                                className="mt-3 rounded-xl max-w-full" style={{ maxHeight: 280, border: '1px solid var(--glass-border)' }} />

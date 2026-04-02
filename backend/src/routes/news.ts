@@ -1,4 +1,3 @@
-// @ts-nocheck — schema fields mismatch, needs migration
 import type { FastifyInstance } from 'fastify'
 import { z }      from 'zod'
 import { prisma } from '../db'
@@ -11,10 +10,9 @@ export async function newsRoutes(app: FastifyInstance) {
     const skip  = (Number(page) - 1) * limit
     const where: any = {
       isActive: true,
-      publishedAt: { lte: new Date() },
       OR: [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } },
+        { publishAt: null },
+        { publishAt: { lte: new Date() } },
       ],
     }
     if (type === 'NEWS' || type === 'PROMOTION') where.type = type
@@ -22,9 +20,9 @@ export async function newsRoutes(app: FastifyInstance) {
     const [news, total] = await Promise.all([
       prisma.news.findMany({
         where,
-        orderBy: [{ isPinned: 'desc' }, { publishedAt: 'desc' }],
+        orderBy: [{ sortOrder: 'desc' }, { createdAt: 'desc' }],
         skip,
-        take: Number(limit),
+        take: limit,
       }),
       prisma.news.count({ where }),
     ])
@@ -46,20 +44,16 @@ export async function adminNewsRoutes(app: FastifyInstance) {
   const admin = { preHandler: [app.adminOnly] }
 
   const NewsSchema = z.object({
-    type:         z.enum(['NEWS', 'PROMOTION']).default('NEWS'),
-    title:        z.string().min(1),
-    content:      z.string().min(1),
-    imageUrl:     z.string().optional().nullable(),
-    buttons:      z.any().optional().nullable(),
-    discountCode: z.string().optional().nullable(),
-    discountPct:  z.number().optional().nullable(),
-    discountAbs:  z.number().optional().nullable(),
-    tariffIds:    z.array(z.string()).default([]),
-    maxUses:      z.number().optional().nullable(),
-    isActive:     z.boolean().default(true),
-    isPinned:     z.boolean().default(false),
-    publishedAt:  z.string().datetime().optional(),
-    expiresAt:    z.string().datetime().optional().nullable(),
+    type:      z.enum(['NEWS', 'PROMOTION']).default('NEWS'),
+    title:     z.string().min(1),
+    content:   z.string().min(1),
+    imageUrl:  z.string().optional().nullable(),
+    ctaText:   z.string().optional().nullable(),
+    ctaUrl:    z.string().optional().nullable(),
+    isActive:  z.boolean().default(true),
+    sortOrder: z.number().int().default(0),
+    publishAt: z.string().datetime().optional().nullable(),
+    expiresAt: z.string().datetime().optional().nullable(),
   })
 
   app.get('/', admin, async (req) => {
@@ -71,7 +65,7 @@ export async function adminNewsRoutes(app: FastifyInstance) {
       prisma.news.findMany({
         orderBy: { createdAt: 'desc' },
         skip,
-        take: Number(limit),
+        take: limit,
       }),
       prisma.news.count(),
     ])
@@ -84,8 +78,8 @@ export async function adminNewsRoutes(app: FastifyInstance) {
     const item = await prisma.news.create({
       data: {
         ...data,
-        publishedAt: data.publishedAt ? new Date(data.publishedAt) : new Date(),
-        expiresAt:   data.expiresAt ? new Date(data.expiresAt) : null,
+        publishAt: data.publishAt ? new Date(data.publishAt) : new Date(),
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
       },
     })
     return reply.status(201).send(item)
@@ -98,8 +92,8 @@ export async function adminNewsRoutes(app: FastifyInstance) {
       where: { id },
       data:  {
         ...data,
-        publishedAt: data.publishedAt ? new Date(data.publishedAt) : undefined,
-        expiresAt:   data.expiresAt ? new Date(data.expiresAt) : undefined,
+        publishAt: data.publishAt ? new Date(data.publishAt) : undefined,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
       },
     })
   })
@@ -110,11 +104,12 @@ export async function adminNewsRoutes(app: FastifyInstance) {
     return { ok: true }
   })
 
+  // Publish / unpublish
   app.post('/:id/publish', admin, async (req) => {
     const { id } = req.params as { id: string }
     return prisma.news.update({
       where: { id },
-      data:  { isActive: true, publishedAt: new Date() },
+      data:  { isActive: true, publishAt: new Date() },
     })
   })
 
