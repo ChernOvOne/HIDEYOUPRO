@@ -19,6 +19,7 @@ const NAV = [
   { href: '/admin/promos',         icon: Ticket,          label: 'Промокоды',     group: 'vpn' },
   { href: '/admin/accounting',     icon: DollarSign,      label: 'Бухгалтерия',   group: 'finance' },
   { href: '/admin/partners',       icon: Handshake,       label: 'Партнёры',      group: 'finance' },
+  { href: '/admin/servers',        icon: Server,          label: 'Рег. платежи',  group: 'finance' },
   { href: '/admin/marketing',      icon: Megaphone,       label: 'Маркетинг',     group: 'marketing' },
   { href: '/admin/communications', icon: MessageCircle,   label: 'Коммуникации',  group: 'tools' },
   { href: '/admin/bot/constructor',icon: Bot,             label: 'Конструктор',   group: 'tools' },
