@@ -6,12 +6,15 @@
  */
 
 import { InlineKeyboard, Context } from 'grammy'
+import Redis              from 'ioredis'
 import { prisma }         from '../db'
 import { logger }         from '../utils/logger'
 import { config }         from '../config'
 import { remnawave }      from '../services/remnawave'
 import { balanceService } from '../services/balance'
 import type { BotBlock, BotButton, BotTrigger } from '@prisma/client'
+
+const redis = new Redis(config.redis.url)
 
 // ── Types ─────────────────────────────────────────────────────
 type BlockWithButtons = BotBlock & { buttons: BotButton[] }
@@ -246,14 +249,18 @@ async function performAction(actionType: string, actionValue: string | null, use
 
 // ── Throttle check ────────────────────────────────────────────
 async function isThrottled(blockId: string, userId: string, minutes: number): Promise<boolean> {
+  if (minutes <= 0) return false
   const key = `throttle:${blockId}:${userId}`
-  const existing = await prisma.botBlockStat.findFirst({
-    where: { blockId },
-    orderBy: { date: 'desc' },
-  })
-  // Simple check via redis if available, fallback to timestamp
-  // For now use a simple approach
-  return false // TODO: implement with Redis
+  try {
+    const exists = await redis.get(key)
+    if (exists) return true
+    // Set throttle key with TTL
+    await redis.set(key, '1', 'EX', minutes * 60)
+    return false
+  } catch {
+    // Redis unavailable — don't throttle
+    return false
+  }
 }
 
 // ── Stats tracking ────────────────────────────────────────────

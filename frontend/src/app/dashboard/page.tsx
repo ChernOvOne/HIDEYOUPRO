@@ -56,6 +56,7 @@ export default function DashboardPage() {
   const [myGifts, setMyGifts] = useState<any[]>([])
   const [activeDiscount, setActiveDiscount] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState<string | null>(null)
   const [copied, setCopied]   = useState<string | null>(null)
 
   /* ── modals ── */
@@ -125,7 +126,10 @@ export default function DashboardPage() {
       fetch('/api/public/config').then(r => r.json()).catch(() => ({})),
       fetch('/api/user/promo/active-discount', { credentials: 'include' }).then(r => r.json()).catch(() => null),
     ]).then(([d, s, t, r, b, n, p, dev, gifts, cfg, disc]) => {
+      if (!d || d.error) { setError('Не удалось загрузить данные'); return }
       setData(d); setSub(s); setTariffs(t); setRef(r); setBal(b); setNews(n); setProxies(p); setDevices(dev); setMyGifts(Array.isArray(gifts) ? gifts : []); setConfig(cfg || {}); if (disc?.active) setActiveDiscount(disc)
+    }).catch(() => {
+      setError('Ошибка соединения с сервером')
     }).finally(() => setLoading(false))
 
     // Load activity history separately
@@ -300,6 +304,16 @@ export default function DashboardPage() {
 
   /* ── loading skeleton ── */
   if (loading) return <DashboardSkeleton />
+  if (error) return (
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="text-center space-y-4">
+        <p className="text-lg text-red-400">{error}</p>
+        <button onClick={() => window.location.reload()} className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm">
+          Попробовать снова
+        </button>
+      </div>
+    </div>
+  )
   if (!data) return null
 
   /* ── derived ── */

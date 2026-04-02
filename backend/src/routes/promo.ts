@@ -100,17 +100,31 @@ export async function adminPromoRoutes(app: FastifyInstance) {
       usedForPurchase: false as boolean,
     }))
 
-    if (promo.type === 'discount') {
-      // Check payments after activation for each user
+    if (promo.type === 'discount' && usageDetails.length > 0) {
+      // Batch query: find all users who paid after promo activation
+      const userIds = usageDetails.map(u => u.userId)
+      const earliestActivation = usageDetails.reduce(
+        (min, u) => u.activatedAt < min ? u.activatedAt : min,
+        usageDetails[0].activatedAt,
+      )
+      const paidPayments = await prisma.payment.findMany({
+        where: {
+          userId: { in: userIds },
+          status: 'PAID',
+          paidAt: { gte: earliestActivation },
+        },
+        select: { userId: true, paidAt: true },
+      })
+      // Build lookup: userId -> earliest paid date
+      const paidMap = new Map<string, Date>()
+      for (const p of paidPayments) {
+        if (p.paidAt && (!paidMap.has(p.userId) || p.paidAt < paidMap.get(p.userId)!)) {
+          paidMap.set(p.userId, p.paidAt)
+        }
+      }
       for (const usage of usageDetails) {
-        const payment = await prisma.payment.findFirst({
-          where: {
-            userId: usage.userId,
-            status: 'PAID',
-            paidAt: { gte: usage.activatedAt },
-          },
-        })
-        usage.usedForPurchase = !!payment
+        const paidAt = paidMap.get(usage.userId)
+        usage.usedForPurchase = !!paidAt && paidAt >= usage.activatedAt
       }
     }
 

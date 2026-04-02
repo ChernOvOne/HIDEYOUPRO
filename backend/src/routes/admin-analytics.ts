@@ -9,7 +9,7 @@ export async function adminAnalyticsRoutes(app: FastifyInstance) {
   // GET /overview — main analytics data
   app.get('/overview', admin, async (req) => {
     const qs = z.object({
-      days: z.coerce.number().int().default(30),
+      days: z.coerce.number().int().min(1).max(365).default(30),
     }).parse(req.query)
 
     const since = new Date(Date.now() - qs.days * 86400_000)
@@ -28,6 +28,7 @@ export async function adminAnalyticsRoutes(app: FastifyInstance) {
         where: { status: 'PAID', paidAt: { gte: since } },
         select: { amount: true, paidAt: true },
         orderBy: { paidAt: 'asc' },
+        take: 10000,
       }),
     ])
 
@@ -43,6 +44,7 @@ export async function adminAnalyticsRoutes(app: FastifyInstance) {
       where: { createdAt: { gte: since } },
       select: { createdAt: true },
       orderBy: { createdAt: 'asc' },
+      take: 10000,
     })
     const dailyUsers: Record<string, number> = {}
     for (const u of recentUsers) {

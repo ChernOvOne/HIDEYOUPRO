@@ -127,6 +127,7 @@ export async function adminAccountingRoutes(app: FastifyInstance) {
     const transactions = await prisma.transaction.findMany({
       where: { date: { gte: startDate, lt: endDate } },
       select: { type: true, amount: true, date: true },
+      take: 50000,
     })
 
     // Group by month

@@ -96,12 +96,16 @@ export async function adminBroadcastRoutes(app: FastifyInstance) {
 
   // POST /:id/send — execute broadcast
   app.post<{ Params: { id: string } }>('/:id/send', admin, async (req) => {
-    const broadcast = await prisma.broadcast.findUniqueOrThrow({ where: { id: req.params.id } })
-    if (broadcast.status === 'SENDING' || broadcast.status === 'COMPLETED') {
+    // Atomic status check + update to prevent double-send race condition
+    const updated = await prisma.broadcast.updateMany({
+      where: { id: req.params.id, status: { notIn: ['SENDING', 'COMPLETED'] } },
+      data:  { status: 'SENDING' },
+    })
+    if (updated.count === 0) {
       return { error: 'Already sent or sending' }
     }
 
-    await prisma.broadcast.update({ where: { id: broadcast.id }, data: { status: 'SENDING' } })
+    const broadcast = await prisma.broadcast.findUniqueOrThrow({ where: { id: req.params.id } })
 
     // Get audience
     const audienceWhere: any = { isActive: true }
@@ -119,59 +123,57 @@ export async function adminBroadcastRoutes(app: FastifyInstance) {
 
     let sentCount = 0
     let failCount = 0
+    const BATCH_SIZE = 25
+
+    // Helper: process array in parallel batches
+    async function sendInBatches<T>(items: T[], fn: (item: T) => Promise<void>) {
+      for (let i = 0; i < items.length; i += BATCH_SIZE) {
+        const batch = items.slice(i, i + BATCH_SIZE)
+        const results = await Promise.allSettled(batch.map(fn))
+        for (const r of results) {
+          if (r.status === 'fulfilled') sentCount++
+          else failCount++
+        }
+      }
+    }
 
     // Send TG
     if (broadcast.channelTg && broadcast.tgText) {
-      for (const user of users) {
-        if (!user.telegramId) continue
-        try {
-          // Poll
-          if (broadcast.tgPollQuestion && broadcast.tgPollOptions) {
-            const options = broadcast.tgPollOptions as string[]
-            await bot.api.sendMessage(user.telegramId, `📊 ${broadcast.tgPollQuestion}\n\n${options.map((o, i) => `${i + 1}. ${o}`).join('\n')}`)
-          } else {
-            // Regular message
-            const opts: any = { parse_mode: broadcast.tgParseMode || 'Markdown' }
-
-            // Buttons
-            if (broadcast.tgButtons) {
-              const buttons = broadcast.tgButtons as any[]
-              if (buttons.length > 0) {
-                opts.reply_markup = {
-                  inline_keyboard: buttons.map((btn: any) => [{
-                    text: btn.label || btn.text,
-                    ...(btn.url ? { url: btn.url } : {}),
-                    ...(btn.data ? { callback_data: btn.data } : {}),
-                  }]),
-                }
+      const tgUsers = users.filter(u => u.telegramId)
+      await sendInBatches(tgUsers, async (user) => {
+        if (broadcast.tgPollQuestion && broadcast.tgPollOptions) {
+          const options = broadcast.tgPollOptions as string[]
+          await bot.api.sendMessage(user.telegramId!, `📊 ${broadcast.tgPollQuestion}\n\n${options.map((o, i) => `${i + 1}. ${o}`).join('\n')}`)
+        } else {
+          const opts: any = { parse_mode: broadcast.tgParseMode || 'Markdown' }
+          if (broadcast.tgButtons) {
+            const buttons = broadcast.tgButtons as any[]
+            if (buttons.length > 0) {
+              opts.reply_markup = {
+                inline_keyboard: buttons.map((btn: any) => [{
+                  text: btn.label || btn.text,
+                  ...(btn.url ? { url: btn.url } : {}),
+                  ...(btn.data ? { callback_data: btn.data } : {}),
+                }]),
               }
             }
-
-            await bot.api.sendMessage(user.telegramId, broadcast.tgText, opts)
           }
-          sentCount++
-        } catch {
-          failCount++
+          await bot.api.sendMessage(user.telegramId!, broadcast.tgText!, opts)
         }
-      }
+      })
     }
 
     // Send Email
     if (broadcast.channelEmail && broadcast.emailSubject) {
       const { emailService } = await import('../services/email')
-      for (const user of users) {
-        if (!user.email) continue
-        try {
-          await emailService.sendBroadcastEmail({
-            to: user.email,
-            subject: broadcast.emailSubject,
-            html: broadcast.emailHtml || '',
-          })
-          sentCount++
-        } catch {
-          failCount++
-        }
-      }
+      const emailUsers = users.filter(u => u.email)
+      await sendInBatches(emailUsers, async (user) => {
+        await emailService.sendBroadcastEmail({
+          to: user.email!,
+          subject: broadcast.emailSubject!,
+          html: broadcast.emailHtml || '',
+        })
+      })
     }
 
     await prisma.broadcast.update({
