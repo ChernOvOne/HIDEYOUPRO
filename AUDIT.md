@@ -1,13 +1,15 @@
 # HIDEYOU PRO — Full Code Audit
 
 **Date:** 2026-04-02  
-**Status:** Phase 1-3 DONE, Phase 4-5 pending
+**Status:** Phase 1-4 DONE, Phase 5 pending
 
 **Progress:**
 - Phase 1 (Critical bugs): DONE — C1-C10 fixed
 - Phase 2 (Security): DONE — H4,H5,H7,H8,C8 fixed
 - Phase 3 (Performance): DONE — H1,H2,H3,H6,H10,H12 fixed
-- Phase 4 (Code quality): PENDING
+- Phase 4 (Code quality): DONE — M1(partial),M3,M11,M13,M14 fixed
+  - 6 files freed from @ts-nocheck, 10 remain (need schema migration)
+  - M5 (audit logging) deferred — requires per-endpoint changes
 - Phase 5 (Polish): PENDING
 
 ---
