@@ -107,7 +107,9 @@ export async function giftRoutes(app: FastifyInstance) {
   })
 
   // Get gift status by code (public-ish, no auth required to check)
-  app.get('/status/:code', async (req, reply) => {
+  app.get('/status/:code', {
+    config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+  }, async (req, reply) => {
     const { code } = req.params as { code: string }
     const gift = await giftService.getGiftStatus(code)
     if (!gift) return reply.status(404).send({ error: 'Подарок не найден' })

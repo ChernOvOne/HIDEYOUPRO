@@ -115,6 +115,7 @@ export async function tmaAuthRoute(app: FastifyInstance) {
         httpOnly: true,
         secure:   config.isProd,
         sameSite: config.isProd ? 'none' : 'lax', // 'none' required for TMA
+        signed:   true,
         maxAge:   30 * 24 * 3600,
         path:     '/',
         domain:   config.isProd ? config.cookieDomain : undefined,

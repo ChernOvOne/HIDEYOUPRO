@@ -19,7 +19,7 @@ export async function registerPlugins(app: FastifyInstance) {
   await app.register(fastifyCookie, { secret: config.cookieSecret, hook: 'onRequest' })
   await app.register(fastifyJwt, {
     secret: config.jwtSecret,
-    cookie: { cookieName: 'token', signed: false },
+    cookie: { cookieName: 'token', signed: true },
     sign:   { expiresIn: config.jwtExpires },
   })
 

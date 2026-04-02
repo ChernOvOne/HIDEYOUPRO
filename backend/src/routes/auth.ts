@@ -73,6 +73,7 @@ export async function authRoutes(app: FastifyInstance) {
       httpOnly: true,
       secure:   config.isProd,
       sameSite: 'lax',
+      signed:   true,
       domain:   config.cookieDomain,
       maxAge:   30 * 24 * 60 * 60,
     })
@@ -119,7 +120,7 @@ export async function authRoutes(app: FastifyInstance) {
 
     reply.setCookie('token', token, {
       path: '/', httpOnly: true, secure: config.isProd,
-      sameSite: 'lax', domain: config.cookieDomain,
+      sameSite: 'lax', signed: true, domain: config.cookieDomain,
       maxAge: 30 * 24 * 60 * 60,
     })
 
@@ -149,7 +150,7 @@ export async function authRoutes(app: FastifyInstance) {
   // POST /logout
   app.post('/logout', async (req, reply) => {
     reply.clearCookie('token', {
-      path: '/', domain: config.cookieDomain,
+      path: '/', signed: true, domain: config.cookieDomain,
     })
     return { ok: true }
   })

@@ -131,7 +131,8 @@ export async function adminUserRoutes(app: FastifyInstance) {
       }
     }
 
-    return { ...user, rmData }
+    const { passwordHash: _, ...safeUser } = user as any
+    return { ...safeUser, rmData }
   })
 
   // PUT /:id — update user
@@ -148,7 +149,9 @@ export async function adminUserRoutes(app: FastifyInstance) {
       utmCode:      z.string().optional(),
     }).parse(req.body)
 
-    return prisma.user.update({ where: { id }, data: body as any })
+    const updated = await prisma.user.update({ where: { id }, data: body as any })
+    const { passwordHash: _, ...safe } = updated as any
+    return safe
   })
 
   // POST /:id/note — add admin note
