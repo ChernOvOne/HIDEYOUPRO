@@ -74,7 +74,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     href === '/admin' ? pathname === '/admin' : pathname.startsWith(href)
 
   return (
-    <div className="flex h-screen bg-surface">
+    <div className="flex h-screen bg-surface" style={{ color: '#111827' }}>
       {/* ═══ Desktop Sidebar (56px) ═══ */}
       <aside className="hidden md:flex flex-col w-14 bg-white border-r border-gray-100 flex-shrink-0">
         {/* Logo */}
