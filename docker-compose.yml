@@ -59,9 +59,6 @@ services:
     networks:
       hyp_internal: {}
       hyp_external: {}
-      hideyou_ext:
-        aliases:
-          - pro-backend
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:4000/health || exit 1"]
       interval: 30s
@@ -89,9 +86,7 @@ services:
       - backend
     networks:
       hyp_internal: {}
-      hideyou_ext:
-        aliases:
-          - pro-frontend
+      hyp_external: {}
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000 || exit 1"]
       interval: 30s
@@ -135,6 +130,3 @@ networks:
   hyp_external:
     driver: bridge
   # Connect to HideYou's external network so nginx can reach us
-  hideyou_ext:
-    external: true
-    name: hideyou_hideyou_external
