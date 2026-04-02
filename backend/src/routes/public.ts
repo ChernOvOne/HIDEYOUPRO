@@ -1,4 +1,3 @@
-// @ts-nocheck — schema fields mismatch, needs migration
 import type { FastifyInstance } from 'fastify'
 import { prisma }  from '../db'
 import { config }  from '../config'
@@ -14,7 +13,7 @@ export async function publicRoutes(app: FastifyInstance) {
         countries: true, protocol: true, speed: true,
         durationDays: true, priceRub: true, priceUsdt: true,
         deviceLimit: true, trafficGb: true, isVisible: true,
-        mode: true, variants: true, configurator: true,
+        mode: true, variants: true,
       },
     }),
   )

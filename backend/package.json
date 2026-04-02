@@ -16,6 +16,7 @@
     "seed": "node dist/scripts/seed.js",
     "notify-expiry": "node dist/scripts/notify-expiry.js",
     "notify-servers": "node dist/scripts/notify-servers.js",
+    "process-recurring": "node dist/scripts/process-recurring.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",

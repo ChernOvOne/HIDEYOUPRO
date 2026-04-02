@@ -1,4 +1,3 @@
-// @ts-nocheck — schema fields mismatch, needs migration
 import type { FastifyInstance } from 'fastify'
 import { z }      from 'zod'
 import { prisma } from '../db'

@@ -1,5 +1,5 @@
-// @ts-nocheck — schema fields mismatch, needs migration
 import type { FastifyInstance } from 'fastify'
+// @ts-ignore — no @types/qrcode
 import QRCode    from 'qrcode'
 import { z }     from 'zod'
 import { prisma }    from '../db'
@@ -413,7 +413,7 @@ export async function userRoutes(app: FastifyInstance) {
     try {
       await balanceService.debit({
         userId,
-        amount:      tariff.priceRub,
+        amount:      Number(tariff.priceRub),
         type:        'PURCHASE',
         description: `Оплата тарифа: ${tariff.name}`,
       })
@@ -549,7 +549,7 @@ export async function userRoutes(app: FastifyInstance) {
         status: 'PAID',
         purpose: 'SUBSCRIPTION',
         paidAt: new Date(),
-        yukassaStatus: JSON.stringify({ _type: 'referral_redeem', days }),
+        metadata: { _type: 'referral_redeem', days },
       },
     })
 
@@ -622,7 +622,7 @@ export async function userRoutes(app: FastifyInstance) {
         userId, tariffId,
         provider: 'MANUAL', amount: 0, currency: 'RUB',
         status: 'PAID', purpose: 'SUBSCRIPTION', paidAt: new Date(),
-        yukassaStatus: JSON.stringify({ _type: 'bonus_redeem', days }),
+        metadata: { _type: 'bonus_redeem', days },
       },
     })
 
@@ -687,7 +687,7 @@ export async function userRoutes(app: FastifyInstance) {
           status: 'PAID',
           purpose: 'SUBSCRIPTION',
           paidAt: new Date(),
-          yukassaStatus: JSON.stringify({ _type: 'trial', days: trialDays }),
+          metadata: { _type: 'trial', days: trialDays },
         },
     })
 
@@ -765,7 +765,7 @@ export async function buildActivityLog(
       if (meta?.type === 'trial')           entryType = 'trial'
       if (meta?.type === 'bonus_redeem')    entryType = 'bonus_redeem'
       if (meta?.type === 'referral_redeem') entryType = 'referral_redeem'
-      if (p.provider === 'BALANCE' && p.amount > 0) entryType = 'balance_purchase'
+      if (p.provider === 'BALANCE' && Number(p.amount) > 0) entryType = 'balance_purchase'
 
       // Apply type filter
       if (types) {
@@ -784,7 +784,7 @@ export async function buildActivityLog(
         case 'bonus_redeem':   desc = `Использование бонусных дней: ${meta?.days ?? '?'} дн.`; break
         case 'referral_redeem': desc = `Использование реферальных дней: ${meta?.days ?? '?'} дн.`; break
         case 'balance_purchase': desc = `Оплата с баланса: ${p.tariff?.name || 'Тариф'}`; break
-        default:               desc = p.amount > 0 ? `Оплата: ${p.tariff?.name || 'Тариф'}` : (p.tariff?.name || `Действие`); break
+        default:               desc = Number(p.amount) > 0 ? `Оплата: ${p.tariff?.name || 'Тариф'}` : (p.tariff?.name || `Действие`); break
       }
 
       entries.push({
@@ -842,7 +842,7 @@ export async function buildActivityLog(
         description: tx.description || `Баланс: ${tx.type}`,
         amount:      Number(tx.amount),
         date:        tx.createdAt,
-        metadata:    { balanceType: tx.type, paymentId: tx.paymentId },
+        metadata:    { balanceType: tx.type },
       })
     }
   }

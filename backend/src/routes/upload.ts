@@ -1,4 +1,3 @@
-// @ts-nocheck — schema fields mismatch, needs migration
 import type { FastifyInstance } from 'fastify'
 import { randomUUID } from 'crypto'
 import { writeFile, mkdir } from 'fs/promises'
