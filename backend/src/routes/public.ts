@@ -1,4 +1,4 @@
-// @ts-nocheck — ported from HideYou, runtime-compatible, type adaptation TODO
+// @ts-nocheck — schema fields mismatch, needs migration
 import type { FastifyInstance } from 'fastify'
 import { prisma }  from '../db'
 import { config }  from '../config'

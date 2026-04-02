@@ -1,4 +1,3 @@
-// @ts-nocheck — ported from HideYou, runtime-compatible, type adaptation TODO
 import type { FastifyInstance } from 'fastify'
 import { z }                from 'zod'
 import { prisma }           from '../db'
@@ -37,8 +36,8 @@ export async function paymentRoutes(app: FastifyInstance) {
       prisma.tariff.findFirstOrThrow({ where: { id: body.tariffId, isActive: true } }),
     ])
 
-    let actualPrice = tariff.priceRub
-    let actualPriceUsdt = tariff.priceUsdt
+    let actualPrice = Number(tariff.priceRub)
+    let actualPriceUsdt = tariff.priceUsdt ? Number(tariff.priceUsdt) : null
     let actualDays = tariff.durationDays
     let actualTrafficGb = tariff.trafficGb
     let actualDeviceLimit = tariff.deviceLimit
@@ -82,7 +81,7 @@ export async function paymentRoutes(app: FastifyInstance) {
       include: { promo: true },
     })
     if (activeDiscount?.promo?.discountPct) {
-      const pct = activeDiscount.promo.discountPct
+      const pct = Number(activeDiscount.promo.discountPct)
       const tariffMatch = activeDiscount.promo.tariffIds.length === 0 || activeDiscount.promo.tariffIds.includes(body.tariffId)
       if (tariffMatch) {
         const originalPrice = actualPrice

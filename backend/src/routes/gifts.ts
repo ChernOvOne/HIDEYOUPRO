@@ -1,4 +1,3 @@
-// @ts-nocheck — ported from HideYou, runtime-compatible, type adaptation TODO
 import type { FastifyInstance } from 'fastify'
 import { z }            from 'zod'
 import { giftService }  from '../services/gift'
@@ -31,7 +30,7 @@ export async function giftRoutes(app: FastifyInstance) {
       // Debit balance
       await balanceService.debit({
         userId,
-        amount:      tariff.priceRub,
+        amount:      Number(tariff.priceRub),
         type:        'GIFT',
         description: `Подарок: ${tariff.name}`,
       })
@@ -52,7 +51,7 @@ export async function giftRoutes(app: FastifyInstance) {
 
       // Create gift
       const gift = await giftService.createGift({
-        senderId:     userId,
+        fromUserId:     userId,
         tariffId:       tariff.id,
         paymentId:      payment.id,
         recipientEmail: data.recipientEmail,
@@ -85,18 +84,18 @@ export async function giftRoutes(app: FastifyInstance) {
       where: { id: result.paymentId },
       data:  {
         // JSON with gift details — parsed in confirmPayment
-        metadata: JSON.stringify({
+        metadata: {
           _giftMeta: true,
           recipientEmail: data.recipientEmail || null,
           message: data.message || null,
-        }),
+        },
       },
     })
 
     return {
       orderId:    result.paymentId,
       paymentUrl: result.paymentUrl,
-      provider:   result.provider,
+      provider:   data.provider,
     }
   })
 
@@ -116,10 +115,10 @@ export async function giftRoutes(app: FastifyInstance) {
 
     return {
       status:     gift.status,
-      tariffName: gift.tariff.name,
+      tariffName: gift.tariff?.name || null,
       message:    gift.message,
       expiresAt:  gift.expiresAt,
-      senderName: gift?.sender?.telegramName || gift?.sender?.email || null,
+      senderName: gift.sender?.telegramName || gift.sender?.email || null,
     }
   })
 

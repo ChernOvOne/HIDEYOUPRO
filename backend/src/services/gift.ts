@@ -1,11 +1,9 @@
-// @ts-nocheck — ported from HideYou, runtime-compatible, type adaptation TODO
 import { nanoid }    from 'nanoid'
 import { prisma }    from '../db'
 import { config }    from '../config'
 import { logger }    from '../utils/logger'
 import { remnawave } from './remnawave'
 import { notifications } from './notifications'
-import type { User, Tariff } from '@prisma/client'
 
 class GiftService {
   /**
@@ -24,31 +22,34 @@ class GiftService {
 
     const gift = await prisma.giftSubscription.create({
       data: {
-        giftCode,
-        fromUserId:     params.fromUserId,
-        tariffId:       params.tariffId,
-        paymentId:      params.paymentId,
-        recipientEmail: params.recipientEmail,
-        message:        params.message,
-        status:         'PENDING',
+        code:       giftCode,
+        senderId:   params.fromUserId,
+        tariffId:   params.tariffId,
+        message:    params.message,
+        status:     'PENDING',
         expiresAt,
       },
-      include: { tariff: true, fromUser: true },
     })
 
+    // Get tariff and sender for email
+    const [tariff, sender] = await Promise.all([
+      prisma.tariff.findUnique({ where: { id: params.tariffId } }),
+      prisma.user.findUnique({ where: { id: params.fromUserId }, select: { telegramName: true, email: true } }),
+    ])
+
     // Send email to recipient if specified
-    if (params.recipientEmail) {
+    if (params.recipientEmail && tariff) {
       const { emailService } = await import('./email')
       await emailService.sendGiftNotification(
         params.recipientEmail,
         giftCode,
-        gift.tariff.name,
-        gift.fromUser.telegramName || gift.fromUser.email || 'Друг',
-      ).catch(err => logger.warn('Gift email notification failed:', err))
+        tariff.name,
+        sender?.telegramName || sender?.email || 'Друг',
+      ).catch((err: any) => logger.warn('Gift email notification failed:', err))
     }
 
     logger.info(`Gift created: ${giftCode} by user ${params.fromUserId}`)
-    return gift
+    return { ...gift, tariffName: tariff?.name }
   }
 
   /**
@@ -56,11 +57,16 @@ class GiftService {
    */
   async getGiftStatus(code: string) {
     const gift = await prisma.giftSubscription.findUnique({
-      where:   { giftCode: code },
-      include: { tariff: true, fromUser: { select: { telegramName: true, email: true } } },
+      where: { code },
     })
 
     if (!gift) return null
+
+    // Get related data
+    const [tariff, sender] = await Promise.all([
+      prisma.tariff.findUnique({ where: { id: gift.tariffId }, select: { name: true, durationDays: true } }),
+      prisma.user.findUnique({ where: { id: gift.senderId }, select: { telegramName: true, email: true } }),
+    ])
 
     // Check if expired
     if (gift.status === 'PENDING' && gift.expiresAt < new Date()) {
@@ -68,10 +74,10 @@ class GiftService {
         where: { id: gift.id },
         data:  { status: 'EXPIRED' },
       })
-      return { ...gift, status: 'EXPIRED' as const }
+      return { ...gift, status: 'EXPIRED' as const, tariff, sender }
     }
 
-    return gift
+    return { ...gift, tariff, sender }
   }
 
   /**
@@ -79,8 +85,7 @@ class GiftService {
    */
   async claimGift(code: string, userId: string) {
     const gift = await prisma.giftSubscription.findUnique({
-      where:   { giftCode: code },
-      include: { tariff: true },
+      where: { code },
     })
 
     if (!gift) throw new Error('Подарок не найден')
@@ -97,9 +102,9 @@ class GiftService {
     const claimed = await prisma.giftSubscription.updateMany({
       where: { id: gift.id, status: 'PENDING' },
       data: {
-        recipientUserId: userId,
-        status:          'CLAIMED',
-        claimedAt:       new Date(),
+        recipientId: userId,
+        status:      'CLAIMED',
+        claimedAt:   new Date(),
       },
     })
     if (claimed.count === 0) throw new Error('Подарок уже использован')
@@ -108,7 +113,8 @@ class GiftService {
     const user = await prisma.user.findUnique({ where: { id: userId } })
     if (!user) throw new Error('User not found')
 
-    const tariff = gift.tariff
+    const tariff = await prisma.tariff.findUnique({ where: { id: gift.tariffId } })
+    if (!tariff) throw new Error('Tariff not found')
 
     if (!user.remnawaveUuid) {
       // Create REMNAWAVE user
@@ -160,19 +166,19 @@ class GiftService {
         currency:    'RUB',
         status:      'PAID',
         purpose:     'GIFT',
-        paidAt: new Date(),
-        yukassaStatus: JSON.stringify({
+        paidAt:      new Date(),
+        metadata: {
           _giftClaim: true,
           giftCode:   code,
-          fromUserId: gift.fromUserId,
-        }),
+          senderId:   gift.senderId,
+        },
       },
     })
 
     logger.info(`Gift ${code} claimed by user ${userId}`)
 
     // Notify gift sender
-    await notifications.giftClaimed(gift.fromUserId, userId, tariff.name).catch(err =>
+    await notifications.giftClaimed(gift.senderId, userId, tariff.name).catch((err: any) =>
       logger.warn('Gift claim notification failed:', err)
     )
 
@@ -183,14 +189,23 @@ class GiftService {
    * Get gifts sent by user
    */
   async getUserGifts(userId: string) {
-    return prisma.giftSubscription.findMany({
-      where:   { fromUserId: userId },
-      include: {
-        tariff:        { select: { name: true, durationDays: true } },
-        recipientUser: { select: { email: true, telegramName: true } },
-      },
+    const gifts = await prisma.giftSubscription.findMany({
+      where:   { senderId: userId },
       orderBy: { createdAt: 'desc' },
     })
+
+    // Enrich with tariff names
+    const tariffIds = [...new Set(gifts.map(g => g.tariffId))]
+    const tariffs = await prisma.tariff.findMany({
+      where: { id: { in: tariffIds } },
+      select: { id: true, name: true, durationDays: true },
+    })
+    const tariffMap = new Map(tariffs.map(t => [t.id, t]))
+
+    return gifts.map(g => ({
+      ...g,
+      tariff: tariffMap.get(g.tariffId) || null,
+    }))
   }
 
   /**

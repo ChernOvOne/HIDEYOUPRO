@@ -23,7 +23,7 @@ export async function verificationRoutes(app: FastifyInstance) {
     }
 
     try {
-      const result = await verificationService.sendCode({ email, type: purpose, userId })
+      const result = await verificationService.sendCode({ email, type: purpose, userId: userId || 'pending' })
       return result
     } catch (err: any) {
       return reply.status(429).send({ error: err.message })

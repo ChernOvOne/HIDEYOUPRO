@@ -1,4 +1,4 @@
-// @ts-nocheck
+// @ts-nocheck — schema fields mismatch, needs migration
 import type { FastifyInstance } from 'fastify'
 import { exec }    from 'child_process'
 import { promisify } from 'util'

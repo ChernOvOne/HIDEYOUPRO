@@ -1,4 +1,4 @@
-// @ts-nocheck — ported from HideYou, runtime-compatible, type adaptation TODO
+// @ts-nocheck — schema fields mismatch, needs migration
 import type { FastifyInstance } from 'fastify'
 import QRCode    from 'qrcode'
 import { z }     from 'zod'
@@ -31,7 +31,8 @@ export async function userRoutes(app: FastifyInstance) {
     const userId = (req.user as any).sub
 
     // Update last IP on each dashboard visit
-    prisma.user.update({ where: { id: userId }, data: { lastIp: getClientIp(req) } }).catch(() => {})
+    // Fire-and-forget IP update — don't block dashboard response
+    prisma.user.update({ where: { id: userId }, data: { lastIp: getClientIp(req) } }).catch(() => { /* non-critical */ })
 
     const user = await prisma.user.findUnique({
       where:   { id: userId },

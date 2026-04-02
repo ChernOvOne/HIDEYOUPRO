@@ -1,4 +1,3 @@
-// @ts-nocheck — ported from HideYou, runtime-compatible, type adaptation TODO
 import { prisma }       from '../db'
 import { config }       from '../config'
 import { emailService } from './email'
@@ -12,7 +11,7 @@ class VerificationService {
   async sendCode(params: {
     email:   string
     type:    EmailVerificationType
-    userId?: string
+    userId: string
   }): Promise<{ ok: boolean; expiresIn: number }> {
     const { email, type, userId } = params
 
@@ -28,8 +27,9 @@ class VerificationService {
       throw new Error('Подождите минуту перед повторной отправкой кода')
     }
 
-    // Generate 6-digit code
-    const code = String(Math.floor(100000 + Math.random() * 900000))
+    // Generate 6-digit code (cryptographically secure)
+    const { randomInt } = await import('crypto')
+    const code = String(randomInt(100000, 999999))
     const ttl  = config.verification.codeTtl
 
     await prisma.emailVerification.create({
@@ -68,7 +68,7 @@ class VerificationService {
         email:      params.email,
         code:       params.code,
         type:       params.type,
-        verifiedAt: null,
+        usedAt: null,
         expiresAt:  { gt: new Date() },
       },
       orderBy: { createdAt: 'desc' },
@@ -78,7 +78,7 @@ class VerificationService {
 
     await prisma.emailVerification.update({
       where: { id: record.id },
-      data:  { verifiedAt: new Date() },
+      data:  { usedAt: new Date() },
     })
 
     return true
@@ -92,7 +92,7 @@ class VerificationService {
       where: {
         email,
         type,
-        verifiedAt: { not: null },
+        usedAt: { not: null },
         createdAt:  { gt: new Date(Date.now() - config.verification.codeTtl * 1000) },
       },
     })

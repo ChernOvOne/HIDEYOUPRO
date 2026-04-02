@@ -290,7 +290,8 @@ function isInSchedule(block: BlockWithButtons): boolean {
   if (!block.scheduleStart && !block.scheduleEnd) return true
 
   const now = new Date()
-  const moscowOffset = 3 * 60 // UTC+3
+  const tzOffsetHours = parseInt(process.env.TZ_OFFSET_HOURS || '3', 10) // default UTC+3 (Moscow)
+  const moscowOffset = tzOffsetHours * 60
   const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes()
   const moscowMinutes = (utcMinutes + moscowOffset) % 1440
 

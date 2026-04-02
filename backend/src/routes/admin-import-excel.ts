@@ -270,11 +270,7 @@ export async function adminImportExcelRoutes(app: FastifyInstance) {
       const email      = cell('email') || null
 
       // Debug first row email
-      if (rowIdx === 2 && headers['email']) {
-        const rawEmail = row.getCell(headers['email']).value
-        console.log('DEBUG email cell raw:', typeof rawEmail, JSON.stringify(rawEmail))
-        console.log('DEBUG email parsed:', email)
-      }
+      // Debug logging removed
 
       if (!telegramId && !email) continue // skip empty rows
 

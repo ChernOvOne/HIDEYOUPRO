@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { FastifyInstance } from 'fastify'
 import { createHmac }   from 'crypto'
 import { prisma }       from '../db'
@@ -107,7 +106,7 @@ export async function tmaAuthRoute(app: FastifyInstance) {
       data:  { lastLoginAt: new Date() },
     })
 
-    const token = app.jwt.sign({ sub: user.id, role: user.role })
+    const token = app.jwt.sign({ id: user.id, sub: user.id, role: user.role })
 
     const { passwordHash, ...safeUser } = user as any
     return reply

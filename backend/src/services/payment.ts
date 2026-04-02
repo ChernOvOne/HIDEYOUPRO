@@ -8,7 +8,7 @@ import axios from 'axios'
 
 class PaymentService {
   // Universal order creation (used by bot)
-  async createOrder(params: { user: any; tariff: any; provider: string }) {
+  async createOrder(params: { user: any; tariff: any; provider: string; currency?: string; purpose?: string }) {
     const { user, tariff, provider } = params
     const amount = provider === 'yukassa' ? Number(tariff.priceRub) : Number(tariff.priceUsdt || tariff.priceRub)
     const desc = `${tariff.name} — ${user.telegramName || user.email || user.id}`
