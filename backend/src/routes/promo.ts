@@ -223,12 +223,14 @@ export async function userPromoRoutes(app: FastifyInstance) {
       message = 'Пробный период активирован'
     }
 
-    // Record usage and increment counter
-    await prisma.promoUsage.create({ data: { promoId: promo.id, userId } })
-    await prisma.promoCode.update({
-      where: { id: promo.id },
-      data: { usedCount: { increment: 1 } },
-    })
+    // Record usage and increment counter atomically
+    await prisma.$transaction([
+      prisma.promoUsage.create({ data: { promoId: promo.id, userId } }),
+      prisma.promoCode.update({
+        where: { id: promo.id },
+        data: { usedCount: { increment: 1 } },
+      }),
+    ])
 
     return { ok: true, message, type: promo.type }
   })

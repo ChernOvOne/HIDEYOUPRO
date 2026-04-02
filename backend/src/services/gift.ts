@@ -93,15 +93,16 @@ class GiftService {
       throw new Error('Срок действия подарка истёк')
     }
 
-    // Update gift as claimed
-    await prisma.giftSubscription.update({
-      where: { id: gift.id },
+    // Atomic update — only claim if still PENDING (prevents race condition)
+    const claimed = await prisma.giftSubscription.updateMany({
+      where: { id: gift.id, status: 'PENDING' },
       data: {
         recipientUserId: userId,
         status:          'CLAIMED',
         claimedAt:       new Date(),
       },
     })
+    if (claimed.count === 0) throw new Error('Подарок уже использован')
 
     // Activate subscription for recipient
     const user = await prisma.user.findUnique({ where: { id: userId } })
@@ -111,13 +112,17 @@ class GiftService {
 
     if (!user.remnawaveUuid) {
       // Create REMNAWAVE user
+      const trafficLimitBytes = tariff.trafficGb ? tariff.trafficGb * 1024 * 1024 * 1024 : 0
       const rmUser = await remnawave.createUser({
-        username:             user.email || `tg_${user.telegramId}`,
+        username:             user.email ? user.email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '_') : user.telegramId ? `tg_${user.telegramId}` : `user_${user.id.slice(0, 8)}`,
         email:                user.email ?? undefined,
         telegramId:           user.telegramId ? parseInt(user.telegramId, 10) : null,
         expireAt:             new Date(Date.now() + tariff.durationDays * 86400_000).toISOString(),
-        activeInternalSquads: tariff.remnawaveSquads,
-        tag:                  tariff.remnawaveTag,
+        trafficLimitBytes,
+        trafficLimitStrategy: tariff.trafficStrategy || 'MONTH',
+        hwidDeviceLimit:      tariff.deviceLimit ?? 3,
+        tag:                  tariff.remnawaveTag ?? undefined,
+        activeInternalSquads: tariff.remnawaveSquads.length > 0 ? tariff.remnawaveSquads : undefined,
       })
 
       await prisma.user.update({
@@ -131,12 +136,7 @@ class GiftService {
       })
     } else {
       // Extend existing subscription
-      const rmUser = await remnawave.getUserByUuid(user.remnawaveUuid)
-      await remnawave.extendSubscription(
-        user.remnawaveUuid,
-        tariff.durationDays,
-        rmUser.expireAt ? new Date(rmUser.expireAt) : null,
-      )
+      await remnawave.extendSubscription(user.remnawaveUuid, tariff.durationDays)
 
       const newExpireAt = new Date()
       if (user.subExpireAt && user.subExpireAt > newExpireAt) {

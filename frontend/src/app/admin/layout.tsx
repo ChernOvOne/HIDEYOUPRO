@@ -49,14 +49,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       .then(u => {
         if (cancelled) return
         if (u.role !== 'ADMIN' && u.role !== 'EDITOR') {
-          setLoading(false) // show nothing, middleware handles redirect
+          router.replace('/dashboard')
         } else {
           setUser(u)
           setLoading(false)
         }
       })
       .catch(() => {
-        if (!cancelled) setLoading(false) // middleware handles redirect
+        if (!cancelled) router.replace('/login')
       })
     return () => { cancelled = true }
   }, [])

@@ -107,7 +107,7 @@ export async function paymentRoutes(app: FastifyInstance) {
     })
 
     if (paymentMeta) {
-      await prisma.payment.update({ where: { id: result.paymentId }, data: { status: JSON.stringify(paymentMeta) } })
+      await prisma.payment.update({ where: { id: result.paymentId }, data: { metadata: paymentMeta } })
     }
 
     return result
@@ -161,13 +161,13 @@ export async function paymentRoutes(app: FastifyInstance) {
     // Still pending — check with payment provider
     if (payment.provider === 'YUKASSA' && payment.externalId) {
       try {
-        const yp = null as any // TODO: paymentService.yukassa.getPayment(payment.externalId)
+        const yp = await paymentService.getYukassaPayment(payment.externalId)
         if (yp.paid || yp.status === 'succeeded') {
-          null as any // TODO: paymentService.confirmPayment(orderId)
+          await paymentService.confirmPayment(payment.id)
           return { confirmed: true, status: 'PAID' }
         }
         if (yp.status === 'canceled') {
-          await prisma.payment.update({ where: { id: orderId }, data: { status: 'FAILED' } })
+          await prisma.payment.update({ where: { id: payment.id }, data: { status: 'FAILED' } })
           return { confirmed: false, status: 'FAILED' }
         }
         // waiting_for_capture, pending — still processing
@@ -180,13 +180,13 @@ export async function paymentRoutes(app: FastifyInstance) {
 
     if (payment.provider === 'CRYPTOPAY' && payment.externalId) {
       try {
-        const inv = null as any // TODO: paymentService.cryptopay.getInvoice(payment.externalId)
+        const inv = await paymentService.getCryptoInvoice(payment.externalId)
         if (inv?.status === 'paid') {
-          null as any // TODO: paymentService.confirmPayment(orderId)
+          await paymentService.confirmPayment(payment.id)
           return { confirmed: true, status: 'PAID' }
         }
         if (inv?.status === 'expired') {
-          await prisma.payment.update({ where: { id: orderId }, data: { status: 'EXPIRED' } })
+          await prisma.payment.update({ where: { id: payment.id }, data: { status: 'EXPIRED' } })
           return { confirmed: false, status: 'EXPIRED' }
         }
         return { confirmed: false, status: 'PENDING' }

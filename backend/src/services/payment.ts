@@ -1,6 +1,9 @@
 import { prisma } from '../db'
 import { config } from '../config'
 import { logger } from '../utils/logger'
+import { remnawave } from './remnawave'
+import { balanceService } from './balance'
+import { notifications } from './notifications'
 import axios from 'axios'
 
 class PaymentService {
@@ -40,7 +43,7 @@ class PaymentService {
     )
 
     // Create pending payment
-    await prisma.payment.create({
+    const payment = await prisma.payment.create({
       data: {
         userId:     params.userId,
         tariffId:   params.tariffId,
@@ -53,7 +56,7 @@ class PaymentService {
       },
     })
 
-    return { paymentUrl: data.confirmation?.confirmation_url, paymentId: data.id }
+    return { paymentUrl: data.confirmation?.confirmation_url, paymentId: payment.id, externalId: data.id }
   }
 
   // Create CryptoPay invoice
@@ -77,7 +80,7 @@ class PaymentService {
 
     const invoice = data.result
 
-    await prisma.payment.create({
+    const payment = await prisma.payment.create({
       data: {
         userId:     params.userId,
         tariffId:   params.tariffId,
@@ -90,7 +93,217 @@ class PaymentService {
       },
     })
 
-    return { paymentUrl: invoice.pay_url, invoiceId: invoice.invoice_id }
+    return { paymentUrl: invoice.pay_url, paymentId: payment.id, invoiceId: invoice.invoice_id }
+  }
+
+  // ── Get payment status from YuKassa ──────────────────────────
+  async getYukassaPayment(yukassaId: string) {
+    const { data } = await axios.get(
+      `https://api.yookassa.ru/v3/payments/${yukassaId}`,
+      { auth: { username: config.yukassa.shopId!, password: config.yukassa.secretKey! } },
+    )
+    return data as { id: string; status: string; paid: boolean }
+  }
+
+  // ── Get invoice status from CryptoPay ────────────────────────
+  async getCryptoInvoice(invoiceId: string) {
+    const baseUrl = config.cryptopay.network === 'testnet'
+      ? 'https://testnet-pay.crypt.bot'
+      : 'https://pay.crypt.bot'
+    const { data } = await axios.get(`${baseUrl}/api/getInvoices`, {
+      params:  { invoice_ids: invoiceId },
+      headers: { 'Crypto-Pay-API-Token': config.cryptopay.apiToken },
+    })
+    return data.result?.items?.[0] as { status: string } | undefined
+  }
+
+  // ── Confirm payment & activate subscription ──────────────────
+  async confirmPayment(orderId: string) {
+    const payment = await prisma.payment.findUnique({
+      where:   { id: orderId },
+      include: { user: true, tariff: true },
+    })
+
+    if (!payment) throw new Error(`Payment not found: ${orderId}`)
+    if (payment.status === 'PAID') {
+      logger.info(`Payment ${orderId} already confirmed, skipping`)
+      return
+    }
+
+    // Update payment status
+    await prisma.payment.update({
+      where: { id: orderId },
+      data:  { status: 'PAID', paidAt: new Date() },
+    })
+
+    const { user, tariff } = payment
+    if (!tariff) {
+      logger.warn(`Payment ${orderId} has no tariff, skipping activation`)
+      return
+    }
+
+    // Override tariff values from payment metadata (variants/configurator)
+    const meta = payment.metadata as Record<string, any> | null
+
+    let effectiveDays = tariff.durationDays
+    let effectiveTrafficGb = tariff.trafficGb
+    let effectiveDeviceLimit = tariff.deviceLimit
+
+    if (meta?._mode === 'variant') {
+      effectiveDays = meta.days ?? effectiveDays
+      if (meta.trafficGb != null) effectiveTrafficGb = meta.trafficGb
+      if (meta.deviceLimit != null) effectiveDeviceLimit = meta.deviceLimit
+    }
+    if (meta?._mode === 'configurator') {
+      effectiveDays = meta.days ?? effectiveDays
+      effectiveTrafficGb = meta.trafficGb ?? effectiveTrafficGb
+      effectiveDeviceLimit = meta.devices ?? effectiveDeviceLimit
+    }
+
+    // Handle balance top-up
+    if (payment.purpose === 'TOPUP') {
+      await balanceService.credit({
+        userId:      user.id,
+        amount:      Number(payment.amount),
+        type:        'TOPUP',
+        description: `Пополнение баланса (платёж ${payment.id})`,
+      })
+      logger.info(`Balance top-up confirmed: ${orderId}, +${payment.amount} ${payment.currency}`)
+      return
+    }
+
+    // Handle gift payment
+    if (payment.purpose === 'GIFT') {
+      try {
+        const { giftService } = await import('./gift')
+        let recipientEmail: string | undefined
+        let message: string | undefined
+        if (meta?._giftMeta) {
+          recipientEmail = meta.recipientEmail || undefined
+          message = meta.message || undefined
+        }
+        await giftService.createGift({
+          fromUserId:     user.id,
+          tariffId:       payment.tariffId!,
+          paymentId:      payment.id,
+          recipientEmail,
+          message,
+        })
+        logger.info(`Gift created from payment: ${orderId}`)
+      } catch (err) {
+        logger.error(`Failed to create gift from payment ${orderId}:`, err)
+      }
+      return
+    }
+
+    // Activate / extend REMNAWAVE subscription
+    if (!remnawave.configured) {
+      logger.warn('REMNAWAVE not configured, skipping subscription activation')
+      await prisma.user.update({
+        where: { id: user.id },
+        data:  { subStatus: 'ACTIVE', subExpireAt: new Date(Date.now() + effectiveDays * 86400_000) },
+      })
+      return
+    }
+
+    const trafficLimitBytes = effectiveTrafficGb ? effectiveTrafficGb * 1024 * 1024 * 1024 : 0
+
+    if (!user.remnawaveUuid) {
+      // Create user in REMNAWAVE on first purchase
+      const newExpireDate = new Date(Date.now() + effectiveDays * 86400_000)
+      const rmUser = await remnawave.createUser({
+        username:             user.email ? user.email.split('@')[0].replace(/[^a-zA-Z0-9_-]/g, '_') : user.telegramId ? `tg_${user.telegramId}` : `user_${user.id.slice(0, 8)}`,
+        email:                user.email ?? undefined,
+        telegramId:           user.telegramId ? parseInt(user.telegramId, 10) : null,
+        expireAt:             newExpireDate.toISOString(),
+        trafficLimitBytes,
+        trafficLimitStrategy: tariff.trafficStrategy || 'MONTH',
+        hwidDeviceLimit:      effectiveDeviceLimit ?? 3,
+        tag:                  tariff.remnawaveTag ?? undefined,
+        activeInternalSquads: tariff.remnawaveSquads.length > 0 ? tariff.remnawaveSquads : undefined,
+      })
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data:  {
+          remnawaveUuid: rmUser.uuid,
+          subLink:       remnawave.getSubscriptionUrl(rmUser.uuid),
+          subStatus:     'ACTIVE',
+          subExpireAt:   newExpireDate,
+        },
+      })
+    } else {
+      // Extend existing subscription
+      const rmUser = await remnawave.getUserByUuid(user.remnawaveUuid)
+      const currentExpire = rmUser.expireAt ? new Date(rmUser.expireAt) : new Date()
+      const base = currentExpire > new Date() ? currentExpire : new Date()
+      base.setDate(base.getDate() + effectiveDays)
+
+      await remnawave.updateUser({
+        uuid:                 user.remnawaveUuid,
+        status:               'ACTIVE',
+        expireAt:             base.toISOString(),
+        trafficLimitBytes,
+        trafficLimitStrategy: tariff.trafficStrategy || 'MONTH',
+        hwidDeviceLimit:      effectiveDeviceLimit ?? 3,
+        tag:                  tariff.remnawaveTag ?? undefined,
+        activeInternalSquads: tariff.remnawaveSquads.length > 0 ? tariff.remnawaveSquads : undefined,
+      })
+
+      await remnawave.resetTrafficAction(user.remnawaveUuid).catch(err =>
+        logger.warn(`Failed to reset traffic for ${user.remnawaveUuid}:`, err)
+      )
+
+      const newExpireAt = new Date()
+      if (user.subExpireAt && user.subExpireAt > newExpireAt) {
+        newExpireAt.setTime(user.subExpireAt.getTime())
+      }
+      newExpireAt.setDate(newExpireAt.getDate() + effectiveDays)
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data:  { subStatus: 'ACTIVE', subExpireAt: newExpireAt },
+      })
+    }
+
+    // Handle referral bonus
+    if (user.referredById) {
+      await this.applyReferralBonus(user.referredById, payment.id).catch(err =>
+        logger.warn('Referral bonus failed:', err)
+      )
+    }
+
+    logger.info(`Payment confirmed: ${orderId}, user: ${user.id}, +${effectiveDays} days`)
+
+    // Send notification
+    await notifications.paymentConfirmed(user.id, Number(payment.amount), tariff.name).catch(err =>
+      logger.warn('Payment notification failed:', err)
+    )
+  }
+
+  // ── Referral bonus ────────────────────────────────────────────
+  private async applyReferralBonus(referrerId: string, paymentId: string) {
+    const referrer = await prisma.user.findUnique({ where: { id: referrerId } })
+    if (!referrer) return
+
+    // Check if bonus already applied for this payment
+    const existing = await prisma.referralBonus.findUnique({
+      where: { triggeredByPaymentId: paymentId },
+    })
+    if (existing) return
+
+    const bonusDays = config.referral.bonusDays
+
+    await prisma.referralBonus.create({
+      data: {
+        referrerId,
+        triggeredByPaymentId: paymentId,
+        bonusType:  'DAYS',
+        bonusDays,
+      },
+    })
+
+    logger.info(`Referral days accumulated: +${bonusDays} days for ${referrerId}`)
   }
 }
 

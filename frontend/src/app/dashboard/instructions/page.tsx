@@ -39,7 +39,11 @@ function renderMd(text: string): string {
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/~~(.+?)~~/g, '<del>$1</del>')
     .replace(/`(.+?)`/g, '<code style="background:var(--glass-bg);padding:1px 4px;border-radius:4px;font-size:12px">$1</code>')
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--accent-1);text-decoration:underline">$1</a>')
+    .replace(/\[(.+?)\]\((.+?)\)/g, (_m, label, url) => {
+      // Only allow http(s) links to prevent javascript: XSS
+      if (!/^https?:\/\//i.test(url)) return label
+      return `<a href="${url}" target="_blank" rel="noopener" style="color:var(--accent-1);text-decoration:underline">${label}</a>`
+    })
     .replace(/\n/g, '<br/>')
 }
 

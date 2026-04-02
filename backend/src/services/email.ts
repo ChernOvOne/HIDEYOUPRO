@@ -56,6 +56,31 @@ export const emailService = {
     logger.info(`Email sent to ${to}: ${subject}`)
   },
 
+  async sendVerificationCode(to: string, code: string, subject: string) {
+    const html = `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#534AB7">HIDEYOU VPN</h2>
+        <p>${subject}</p>
+        <div style="font-size:32px;font-weight:700;letter-spacing:8px;text-align:center;padding:24px;background:#f4f4f5;border-radius:12px;margin:16px 0">${code}</div>
+        <p style="color:#888;font-size:13px">Код действителен 10 минут. Если вы не запрашивали этот код, просто проигнорируйте это письмо.</p>
+      </div>
+    `
+    await this.send(to, subject, html)
+  },
+
+  async sendGiftNotification(to: string, giftCode: string, tariffName: string, fromName: string) {
+    const html = `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#534AB7">🎁 Вам подарок!</h2>
+        <p><strong>${fromName}</strong> подарил вам подписку <strong>${tariffName}</strong> на HIDEYOU VPN.</p>
+        <p>Ваш код активации:</p>
+        <div style="font-size:20px;font-weight:700;text-align:center;padding:16px;background:#f4f4f5;border-radius:12px;margin:16px 0;word-break:break-all">${giftCode}</div>
+        <p style="color:#888;font-size:13px">Активируйте подарок в личном кабинете или через Telegram-бот.</p>
+      </div>
+    `
+    await this.send(to, `🎁 Подарок от ${fromName} — HIDEYOU VPN`, html)
+  },
+
   async sendBroadcastEmail(params: { to: string; subject: string; html: string; btnText?: string; btnUrl?: string; template?: string }) {
     const t = await getTransporter()
     if (!t) throw new Error('SMTP not configured')

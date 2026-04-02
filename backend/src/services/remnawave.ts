@@ -68,6 +68,18 @@ class RemnawaveService {
     return data.response ?? data
   }
 
+  async updateUser(payload: Record<string, any>) {
+    const cfg = await this.getConfig()
+    const { data } = await axios.patch('/api/users', payload, cfg)
+    return data.response ?? data
+  }
+
+  async resetTrafficAction(uuid: string) {
+    const cfg = await this.getConfig()
+    const { data } = await axios.post(`/api/users/${uuid}/actions/reset-traffic`, {}, cfg)
+    return data.response ?? data
+  }
+
   async extendSubscription(uuid: string, days: number) {
     const cfg = await this.getConfig()
     const user = await this.getUserByUuid(uuid)

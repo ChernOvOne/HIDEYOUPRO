@@ -9,9 +9,13 @@ export function middleware(request: NextRequest) {
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/setup') ||
-    pathname.startsWith('/api') ||
+    pathname.startsWith('/api') ||       // Backend handles its own auth
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon')
+    pathname.startsWith('/favicon') ||
+    pathname.startsWith('/present') ||
+    pathname.startsWith('/privacy') ||
+    pathname.startsWith('/terms') ||
+    pathname === '/'
   ) {
     return NextResponse.next()
   }
