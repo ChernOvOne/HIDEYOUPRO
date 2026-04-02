@@ -1,5 +1,7 @@
 # Missing Features — PRO vs Original Projects
 
+**Status: MOSTLY RESOLVED** — See completed items below
+
 ## CRITICAL — Сервисы (из /root/hideyou/)
 
 ### 1. Email Service — 5 template-методов отсутствуют
@@ -72,21 +74,26 @@
 
 ---
 
-## ПРИОРИТЕТ ИСПРАВЛЕНИЙ
+## RESOLVED
 
-### Волна 1 — Критические сервисы
-1. Email templates (5 методов)
-2. Notification service (6 методов)  
-3. Notifications + email dual-send
-4. Payment funnel triggers + referral logic
-5. Balance service return values + adminAdjust
+- [x] Email templates (5 methods) — Wave 1
+- [x] Notification service (6 methods) — Wave 1
+- [x] Notifications dual TG+Email + referralBonus/Money/sendCustom — Wave 1
+- [x] Payment funnel triggers + full referral logic — Wave 1
+- [x] Balance service adminAdjust + return values — Wave 1
+- [x] Utils/helpers (RateLimiter, sleep, chunk, formatBytes...) — Wave 1
+- [x] Scripts: create-admin, notify-expiry — Wave 1
+- [x] Remnawave full parity (~12 methods) — Wave 2
+- [x] Seed script — Wave 2
+- [x] Frontend: /present/[code], /privacy, /terms — Wave 3
+- [x] Server alerts cron (notify-servers.ts) — Wave 3
+- [x] Recurring payment executor (process-recurring.ts) — Backlog
+- [x] @ts-nocheck removed from 10/16 files — Backlog
 
-### Волна 2 — Remnawave + утилиты
-6. Remnawave missing methods
-7. Utils/helpers file
-8. Missing scripts (create-admin, notify-expiry, seed)
+## REMAINING BACKLOG
 
-### Волна 3 — Frontend + автоматизация
-9. Present/privacy/terms pages
-10. Server alerts cron
-11. Recurring payment executor
+- 6 files still have @ts-nocheck (need schema field alignment)
+- Partner ROI calculation endpoint
+- Campaign ROAS (revenue attribution to UTM)
+- PDF report generation (only Excel now)
+- Milestone auto-tracking from transaction aggregation
