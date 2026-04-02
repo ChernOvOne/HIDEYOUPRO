@@ -75,7 +75,7 @@ function detectPlatformSlug(): string {
 
 interface Step { id: string; sortOrder: number; title: string; content: string; imageUrl?: string }
 interface App { id: string; name: string; icon: string; sortOrder: number; deeplink?: string; steps: Step[] }
-interface Platform { id: string; name: string; icon: string; sortOrder: number; apps: App[]; slug?: string }
+interface Platform { id: string; name: string; icon: string; sortOrder: number; apps: App[]; slug: string }
 
 // ── WIZARD STEPS ──
 const WIZARD_STEPS = ['platform', 'app', 'setup'] as const
