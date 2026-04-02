@@ -47,14 +47,17 @@ export const adminApi = {
   },
 
   // News
-  news:        (p?: any) => apiFetch('/admin/news', p ? { method: 'GET' } : undefined),
+  news:        (params?: Record<string, string>) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : ''
+    return apiFetch(`/admin/news${qs}`)
+  },
   createNews:  (d: any) => apiFetch('/admin/news', { method: 'POST', body: JSON.stringify(d) }),
   updateNews:  (id: string, d: any) => apiFetch(`/admin/news/${id}`, { method: 'PUT', body: JSON.stringify(d) }),
   deleteNews:  (id: string) => apiFetch(`/admin/news/${id}`, { method: 'DELETE' }),
   publishNews: (id: string) => apiFetch(`/admin/news/${id}/publish`, { method: 'POST' }),
 
   // Promos
-  promos:      (p?: any) => apiFetch('/admin/marketing/promos'),
+  promos:      () => apiFetch('/admin/marketing/promos'),
   tariffs:     () => apiFetch('/admin/tariffs'),
   createPromo: (d: any) => apiFetch('/admin/marketing/promos', { method: 'POST', body: JSON.stringify(d) }),
   updatePromo: (id: string, d: any) => apiFetch(`/admin/marketing/promos/${id}`, { method: 'PUT', body: JSON.stringify(d) }),

@@ -6,8 +6,9 @@ import { prisma } from '../db'
 export async function newsRoutes(app: FastifyInstance) {
   // Public: list active news & promotions
   app.get('/', async (req) => {
-    const { page = '1', limit = '20', type = '' } = req.query as Record<string, string>
-    const skip  = (Number(page) - 1) * Number(limit)
+    const { page = '1', limit: rawLimit = '20', type = '' } = req.query as Record<string, string>
+    const limit = Math.min(Math.max(Number(rawLimit) || 20, 1), 100)
+    const skip  = (Number(page) - 1) * limit
     const where: any = {
       isActive: true,
       publishedAt: { lte: new Date() },
@@ -62,8 +63,9 @@ export async function adminNewsRoutes(app: FastifyInstance) {
   })
 
   app.get('/', admin, async (req) => {
-    const { page = '1', limit = '50' } = req.query as Record<string, string>
-    const skip = (Number(page) - 1) * Number(limit)
+    const { page = '1', limit: rawLim = '50' } = req.query as Record<string, string>
+    const limit = Math.min(Math.max(Number(rawLim) || 50, 1), 100)
+    const skip = (Number(page) - 1) * limit
 
     const [news, total] = await Promise.all([
       prisma.news.findMany({

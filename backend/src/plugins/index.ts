@@ -49,10 +49,11 @@ export async function registerPlugins(app: FastifyInstance) {
   })
 
   await app.register(fastifyRateLimit, {
-    max: 300, timeWindow: '1 minute',
+    max: parseInt(process.env.RATE_LIMIT_MAX || '300', 10),
+    timeWindow: process.env.RATE_LIMIT_WINDOW || '1 minute',
     allowList: (req: any) => {
       const url = req.url || ''
-      return url.startsWith('/api/setup') || url.startsWith('/api/auth') || url.startsWith('/health')
+      return url.startsWith('/api/setup') || url.startsWith('/health')
     },
     errorResponseBuilder: () => ({ error: 'Too many requests' }),
   })

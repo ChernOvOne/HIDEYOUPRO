@@ -12,7 +12,11 @@
     "migrate:dev": "prisma migrate dev",
     "generate": "prisma generate",
     "seed": "node dist/scripts/seed.js",
-    "create-admin": "node dist/scripts/create-admin.js"
+    "create-admin": "node dist/scripts/create-admin.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@fastify/cookie": "^9.3.1",
@@ -46,6 +50,7 @@
     "@types/nodemailer": "^6.4.15",
     "@types/uuid": "^10.0.0",
     "tsx": "^4.16.2",
-    "typescript": "^5.5.3"
+    "typescript": "^5.5.3",
+    "vitest": "^1.6.0"
   }
 }
